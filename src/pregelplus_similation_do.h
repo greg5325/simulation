@@ -3,8 +3,6 @@
 #include <vector>
 using namespace std;
 
-
-
 //Query graph
 struct Query_Graph {
 	vector<label_type> labelMap;
@@ -40,30 +38,30 @@ public:
 
 struct CCValue_pregel {
 	label_type label;
-	int D_id;
+	int id;
 	int inDegree;
-	vector<VertexID> outNeighbors; //邻接顶点
-	vector<VertexID> simudlfjsdjflate; //子结点simulate数[*,*,*....]
-	vector<VertexID> can_sidkfjskldjfmulate; //自身simulate结点{*,*...}
+	vector<VertexID> outNeighbors;
+	vector<VertexID> simCount;
+	vector<VertexID> simSet;
 };
 
 ibinstream & operator<<(ibinstream & m, const CCValue_pregel & v) {
 	m << v.label;
-	m << v.D_id;
+	m << v.id;
 	m << v.inDegree;
 	m << v.outNeighbors;
-	m << v.simudlfjsdjflate;
-	m << v.can_sidkfjskldjfmulate;
+	m << v.simCount;
+	m << v.simSet;
 	return m;
 }
 
 obinstream & operator>>(obinstream & m, CCValue_pregel & v) {
 	m >> v.label;
-	m >> v.D_id;
+	m >> v.id;
 	m >> v.inDegree;
 	m >> v.outNeighbors;
-	m >> v.simudlfjsdjflate;
-	m >> v.can_sidkfjskldjfmulate;
+	m >> v.simCount;
+	m >> v.simSet;
 	return m;
 }
 
@@ -77,33 +75,26 @@ public:
 	}
 
 	virtual void compute(MessageContainer & messages) {
-		if (step_num() == 1) //超步
-				{
-
+		if (step_num() == 1) {
+			//initial simcount
 			for (int j = 0; j < graph.labelMap.size(); j++) {
-				value().simudlfjsdjflate.push_back(value().inDegree);
+				value().simCount.push_back(value().inDegree);
 			}
 
-//				vector<vector<VertexID> >::iterator iter;
-//				for(iter=value().can_simulate.begin();iter!=value().can_simulate.end();iter++){
-//				vector<VertexID> &nps=*iter;
-			//print sum_num
 			vector<VertexID> broad;
 			printf("%d\n", sum_num);
 			bool can_sim = false;
 			for (int i = 0; i < graph.outNeighbors.size(); i++) {
 				can_sim = false;
-				vector<VertexID> &nps = value().can_sidkfjskldjfmulate;
+				vector<VertexID> &nps = value().simSet;
 				for (int j = 0; j < nps.size(); j++) {
 					if (i == nps[j])
 						can_sim = true;
 				}
 				if (!can_sim) {
-//							printf("i=:%d",i);
 					broad.push_back(i);
 				}
 			}
-//				}
 			broadcast(broad);
 			vote_to_halt();
 		}
@@ -125,38 +116,38 @@ public:
 				for (iter = min.begin(); iter != min.end(); iter++) {
 					VertexID minus = *iter;
 					printf("minus=%d ", minus);
-					value().simudlfjsdjflate[minus]--;
+					value().simCount[minus]--;
 				}
 			}
 			bool can_sim = true;
 			vector<VertexID> broad;
-			for (int j = 0; j < value().can_sidkfjskldjfmulate.size(); j++) {
+			for (int j = 0; j < value().simSet.size(); j++) {
 				can_sim = true;
-				int judge = value().can_sidkfjskldjfmulate[j];
+				int judge = value().simSet[j];
 				if (judge != 404) {
 					for (int p = 0; p < graph.outNeighbors[judge].size(); p++) {
 						int j = graph.outNeighbors[judge][p];
-						if (value().simudlfjsdjflate[j] <= 0)
+						if (value().simCount[j] <= 0)
 							can_sim = false;
 					}
 				}
 				if (!can_sim) {
 					broad.push_back(judge);
-					value().can_sidkfjskldjfmulate[j] = 404;
+					value().simSet[j] = 404;
 				}
 			}
 			//print
 			vector<VertexID>::iterator iter4;
-			printf("id=:%d\t simulate:", value().D_id);
-			for (iter4 = value().simudlfjsdjflate.begin();
-					iter4 != value().simudlfjsdjflate.end(); iter4++) {
+			printf("id=:%d\t simulate:", value().id);
+			for (iter4 = value().simCount.begin();
+					iter4 != value().simCount.end(); iter4++) {
 				VertexID tmp4 = *iter4;
 				printf("%d ", tmp4);
 			}
 			printf("after can_simulate:  ");
 			vector<VertexID>::iterator iter2;
-			for (iter2 = value().can_sidkfjskldjfmulate.begin();
-					iter2 != value().can_sidkfjskldjfmulate.end(); iter2++) {
+			for (iter2 = value().simSet.begin(); iter2 != value().simSet.end();
+					iter2++) {
 				VertexID tmp2 = *iter2;
 				printf("%d ", tmp2);
 			}
@@ -180,7 +171,7 @@ public:
 		pch = strtok(line, "\t");
 		CCVertex_pregel* v = new CCVertex_pregel;
 		v->id = atoi(pch); //v->id保存制表符（/t）之前的数据
-		v->value().D_id = v->id;
+		v->value().id = v->id;
 		pch = strtok(NULL, " ");
 		char* label = pch; //label保存顶点种类
 		v->value().label = label[0];
@@ -206,7 +197,7 @@ public:
 				iter1++) {
 			char tmp1 = *iter1;
 			if (tmp1 == label[0]) {
-				v->value().can_sidkfjskldjfmulate.push_back(p);
+				v->value().simSet.push_back(p);
 			}
 			p++;
 		}
@@ -258,8 +249,8 @@ public:
 //			vector<VertexID>::iterator iter;
 //			iter=v->value().can_simulate.begin();
 //			VertexID id=*iter;
-		sprintf(buf, "vid:%d\t can_similate:%d \n", v->value().D_id,
-				v->value().can_sidkfjskldjfmulate[0]);
+		sprintf(buf, "vid:%d\t can_similate:%d \n", v->value().id,
+				v->value().simSet[0]);
 //			sprintf(buf,"cansim:");
 //				for(int i=0;i<v->value().can_simulate.size();i++){
 //			sprintf(buf, "%d\t", v->value().can_simulate[i]);
