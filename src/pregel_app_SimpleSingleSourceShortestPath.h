@@ -7,18 +7,18 @@ using namespace std;
 struct CCValue_pregel
 {
 	int color;
-	vector<VertexID> edges;
+	vector<VertexID> outNeighbors;
 };
 
 ibinstream & operator<<(ibinstream & m, const CCValue_pregel & v){
 	m<<v.color;
-	m<<v.edges;
+	m<<v.outNeighbors;
 	return m;
 }
 
 obinstream & operator>>(obinstream & m, CCValue_pregel & v){
 	m>>v.color;
-	m>>v.edges;
+	m>>v.outNeighbors;
 	return m;
 }
 
@@ -29,7 +29,7 @@ class CCVertex_pregel:public Vertex<VertexID, CCValue_pregel, VertexID>
 	public:
 		void broadcast(VertexID msg)
 		{
-			vector<VertexID> & nbs=value().edges;
+			vector<VertexID> & nbs=value().outNeighbors;
 			for(int i=0; i<nbs.size(); i++)
 			{
 				send_message(nbs[i], msg);
@@ -83,11 +83,11 @@ public:
 	}
     virtual void stepPartial(CCVertex_pregel* v)
     {
-    	cout<<"zjh:SP#"<<step_num()<<"W#"<<get_worker_id()
-				<<"("<<sum.idsum<<","<<sum.colorsum<<")"
-    			<<"+"
-    			<<"("<<v->id<<","<<v->value().color<<")"
-    			<<endl;
+//    	cout<<"zjh:SP#"<<step_num()<<"W#"<<get_worker_id()
+//				<<"("<<sum.idsum<<","<<sum.colorsum<<")"
+//    			<<"+"
+//    			<<"("<<v->id<<","<<v->value().color<<")"
+//    			<<endl;
     	sum.colorsum+=v->value().color;
     	sum.idsum+=v->id;
 
@@ -106,9 +106,9 @@ public:
     }
     virtual summary* finishFinal()
     {
-    	cout<<"zjh:superstep #"<<step_num()<<"Worker #"<<get_worker_id()<<" finishFinal"
-    			<<"sum={"<<sum.idsum<<","<<sum.colorsum<<"}"
-    			<<endl;
+//    	cout<<"zjh:superstep #"<<step_num()<<"Worker #"<<get_worker_id()<<" finishFinal"
+//    			<<"sum={"<<sum.idsum<<","<<sum.colorsum<<"}"
+//    			<<endl;
         return &sum;
     }
 private:
@@ -135,7 +135,7 @@ class CCWorker_pregel:public Worker<CCVertex_pregel,CCAggregator_pregel>
 			for(int i=0; i<num; i++)
 			{
 				pch=strtok(NULL, " ");
-				v->value().edges.push_back(atoi(pch));
+				v->value().outNeighbors.push_back(atoi(pch));
 			}
 			return v;
 		}

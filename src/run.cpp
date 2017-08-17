@@ -14,11 +14,11 @@
 /*
  *for sssp algorithm
  */
-#include "pregel_app_SimpleSingleSourceShortestPath.h"
+#include "pregelplus_similation_do.h"
 
 int main(int argc, char* argv[]){
 	init_workers();
-	pregel_hashmin("/toyTwitter", "/toyTwitterOutput4", true);
+	pregel_similation("/simgraph", "/simresult", false);
 	worker_finalize();
 	return 0;
 }

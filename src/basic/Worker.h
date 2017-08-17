@@ -367,19 +367,10 @@ public:
                 break;
             get_vnum() = all_sum(vertexes.size());
             int wakeAll = getBit(WAKE_ALL_ORBIT, bits_bor);
-            //print bitmap
-//            cout<<"zjh:Worker #"<<get_worker_id()<<" The global bitmap is:"<<hex<<(int)bits_bor<<dec<<endl;
-//            cout<<"zjh:Worker #"<<get_worker_id()<<" The HAS_MSG_ORBIT is:"<<getBit(HAS_MSG_ORBIT, bits_bor)<<endl;
-
             if (wakeAll == 0) {
                 active_vnum() = all_sum(active_count);
-                if(_my_rank==MASTER_RANK){
-                	cout<<"zjh:master:the # of active vertex in this super step #"<<global_step_num-1<<" is "<<active_vnum()<<endl;
-                }
-                if (active_vnum() == 0 && getBit(HAS_MSG_ORBIT, bits_bor) == 0){
-                	cout<<"zjh:superstep #"<<step_num()<<"Worker #"<<get_worker_id()<<" terminated since there is no message received in the last superstep."<<endl;
+                if (active_vnum() == 0 && getBit(HAS_MSG_ORBIT, bits_bor) == 0)
                     break; //all_halt AND no_msg
-                }
             } else
                 active_vnum() = get_vnum();
             //===================
@@ -388,14 +379,10 @@ public:
                 agg->init();
             //===================
             clearBits();
-            if (wakeAll == 1){
-            	cout<<"zjh:superstep #"<<step_num()<<"Worker #"<<get_worker_id()<<" is executing all_compute()"<<endl;
+            if (wakeAll == 1)
                 all_compute();
-            }
-            else{
-            	cout<<"zjh:superstep #"<<step_num()<<"Worker #"<<get_worker_id()<<" is executing active_compute()"<<endl;
+            else
                 active_compute();
-            }
             message_buffer->combine();
             step_msg_num = master_sum_LL(message_buffer->get_total_msg());
             step_vadd_num = master_sum_LL(message_buffer->get_total_vadd());
@@ -408,13 +395,6 @@ public:
             for (int i = 0; i < to_add.size(); i++)
                 add_vertex(to_add[i]);
             to_add.clear();
-
-            //==master compute here
-//            if(_my_rank==0){
-//            	if(step_num()<10&&step_msg_num==0){
-//            		setBit(WAKE_ALL_ORBIT);
-//            	}
-//            }
             //===================
             worker_barrier();
             StopTimer(4);

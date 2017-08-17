@@ -7,18 +7,18 @@ using namespace std;
 struct CCValue_pregel
 {
 	int color;
-	vector<VertexID> edges;
+	vector<VertexID> outNeighbors;
 };
 
 ibinstream & operator<<(ibinstream & m, const CCValue_pregel & v){
 	m<<v.color;
-	m<<v.edges;
+	m<<v.outNeighbors;
 	return m;
 }
 
 obinstream & operator>>(obinstream & m, CCValue_pregel & v){
 	m>>v.color;
-	m>>v.edges;
+	m>>v.outNeighbors;
 	return m;
 }
 
@@ -29,7 +29,7 @@ class CCVertex_pregel:public Vertex<VertexID, CCValue_pregel, VertexID>
 	public:
 		void broadcast(VertexID msg)
 		{
-			vector<VertexID> & nbs=value().edges;
+			vector<VertexID> & nbs=value().outNeighbors;
 			for(int i=0; i<nbs.size(); i++)
 			{
 				send_message(nbs[i], msg);
@@ -41,7 +41,7 @@ class CCVertex_pregel:public Vertex<VertexID, CCValue_pregel, VertexID>
 			if(step_num()==1)
 			{
 				VertexID min=id;
-				vector<VertexID> & nbs=value().edges;
+				vector<VertexID> & nbs=value().outNeighbors;
 				for(int i=0; i<nbs.size(); i++)
 				{
 					if(min>nbs[i]) min=nbs[i];
@@ -87,7 +87,7 @@ class CCWorker_pregel:public Worker<CCVertex_pregel>
 			for(int i=0; i<num; i++)
 			{
 				pch=strtok(NULL, " ");
-				v->value().edges.push_back(atoi(pch));
+				v->value().outNeighbors.push_back(atoi(pch));
 			}
 			return v;
 		}
