@@ -13,6 +13,10 @@
 using namespace std;
 
 //============================
+//label
+#define label_type char
+
+//============================
 ///worker info
 #define MASTER_RANK 0
 
