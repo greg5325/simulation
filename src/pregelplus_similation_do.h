@@ -46,6 +46,9 @@ struct CCValue_pregel {
 	int inDegree;
 	vector<VertexID> outNeighbors; //邻接顶点
 	vector<VertexID> simcount; //子结点simulate数[*,*,*....]
+	/*
+	 * for simset, consider using bitmap to store the set to accelerate the process
+	 */
 	vector<VertexID> simset; //自身simulate结点{*,*...}
 };
 
@@ -86,57 +89,34 @@ public:
 			for (int j = 0; j < q.labels.size(); j++) {
 				value().simcount.push_back(value().inDegree);
 			}
-
-			/*
-			 * setup the bitmap message
+			/*put all the initialization here
+			 *
+			 *initial simset
 			 */
-			int trans_messages = 0x00;
-			bool can_sim = false;
-			for (int i = 0; i < q.labels.size(); i++) {
-				can_sim = false;
-				vector<VertexID> &nps = value().simset;
-				for (int j = 0; j < nps.size(); j++) {
-					if (i == nps[j]){
-						can_sim = true;
-					}
-				}
-				if (!can_sim) {
-					int tmp = 1;
-					for (int p = 0; p < i; p++) {
-						tmp = tmp * 2;
-					}
-					trans_messages += tmp;
-				}
+			for (int i = 0; i < q.labels.size(); ++i) {
+				if (value().label == q.labels[i])
+					value().simset.push_back(i);
 			}
-
 			/*
-			 * refactoring the bitmap msg setup
+			 * setup the bitmap_msg
 			 */
-			int bitmap_msg=0x0;
-			for(int i=0;i<q.labels.size();i++){
-				if(q.labels[i]!=value().label){
-					bitmap_msg|=1<<i;
+			int bitmap_msg = 0x0;
+			for (int i = 0; i < q.labels.size(); i++) {
+				if (q.labels[i] != value().label) {
+					bitmap_msg |= 1 << i;
 				}
 			}
 			/*
 			 * print the bitmap message
 			 */
-			printf("bitmap_msg from v %d is %d:", value().id,trans_messages);
-			for (int i = 31; i >= 0; i--) {
-				printf("%d", GetBit(trans_messages, i));
-				if (i % 8 == 0)
-					putchar(' ');
-			}
-			printf("\n");
-
-			printf("bitmap_msg from v %d is %d:", value().id,bitmap_msg);
-			for (int i = 31; i >= 0; i--) {
-				printf("%d", GetBit(bitmap_msg, i));
-				if (i % 8 == 0)
-					putchar(' ');
-			}
-			printf("\n");
-
+			/*			printf("bitmap_msg from v %d is %d:", value().id,bitmap_msg);
+			 for (int i = 31; i >= 0; i--) {
+			 printf("%d", GetBit(bitmap_msg, i));
+			 if (i % 8 == 0)
+			 putchar(' ');
+			 }
+			 printf("\n");*/
+			//broadcast message
 			broadcast(bitmap_msg);
 			vote_to_halt();
 		} else {
@@ -203,31 +183,25 @@ class CCWorker_pregel: public Worker<CCVertex_pregel> {
 
 public:
 	virtual CCVertex_pregel* toVertex(char* line) {
+		/*
+		 * format of the input graph:
+		 * srcID	label outDegree N1 N2.... inDegree
+		 */
 		char * pch;
-		pch = strtok(line, "\t");
+		pch = strtok(line, "\t"); //srcID
 		CCVertex_pregel* v = new CCVertex_pregel;
-		v->id = atoi(pch); //v->id保存制表符（/t）之前的数据
+		v->id = atoi(pch);
 		v->value().id = v->id;
-		pch = strtok(NULL, " ");
-		char* label = pch; //label保存顶点种类
+		pch = strtok(NULL, " "); //label
+		char* label = pch;
 		v->value().label = label[0];
-		vector<char>::iterator iter1;
-		int p = 0;
-		for (iter1 = q.labels.begin(); iter1 != q.labels.end(); iter1++) {
-			char tmp1 = *iter1;
-			if (tmp1 == label[0]) {
-				v->value().simset.push_back(p);
-			}
-			p++;
-		}
-//********************************************************************************
-		pch = strtok(NULL, " ");
-		int num = atoi(pch); //num保存邻接点个数
+		pch = strtok(NULL, " "); //outDegree
+		int num = atoi(pch);
 		for (int i = 0; i < num; i++) {
-			pch = strtok(NULL, " ");
-			v->value().outNeighbors.push_back(atoi(pch)); //v->value保存每个邻接顶点的ID
+			pch = strtok(NULL, " "); //neighbor
+			v->value().outNeighbors.push_back(atoi(pch));
 		}
-		pch = strtok(NULL, " "); //在邻接点后面插入顶点出度
+		pch = strtok(NULL, " "); //inDegree
 		v->value().inDegree = atoi(pch);
 
 		return v;
@@ -240,15 +214,9 @@ public:
 	}
 };
 
-class CCCombiner_pregel: public Combiner<vector<VertexID> > {
+class CCCombiner_pregel: public Combiner<VertexID> {
 public:
-	virtual void combine(vector<VertexID> & old,
-			const vector<VertexID> & new_msg) {
-		vector<VertexID>::const_iterator it_new;
-		for (it_new = new_msg.begin(); it_new != new_msg.end(); ++it_new) {
-			VertexID co = *it_new;
-			old.push_back(co);
-		}
+	virtual void combine(VertexID & old, const VertexID & new_msg) {
 	}
 };
 
@@ -261,7 +229,7 @@ void pregel_similation(string in_path, string out_path, bool use_combiner) {
 	param.native_dispatcher = false;
 	CCWorker_pregel worker;
 	CCCombiner_pregel combiner;
-//	if (use_combiner)
-//		worker.setCombiner(&combiner);
+	if (use_combiner)
+		worker.setCombiner(&combiner);
 	worker.run(param);
 }
