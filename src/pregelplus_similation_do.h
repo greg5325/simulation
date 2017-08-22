@@ -122,8 +122,6 @@ public:
 			broadcast(bitmap_msg);
 			vote_to_halt();
 		} else {
-			printf("vertex %d received %d messages\n", value().id,
-					messages.size());
 
 			/*
 			 * update the simcount array
@@ -156,43 +154,22 @@ public:
 				 * updated simcount can cover sim_v's outNeighbors
 				 */
 				for (int j = 0; j < q.queryVertexToEdges[sim_v].size(); j++) {
-//					int k = ;
 					if (value().simcount[q.queryVertexToEdges[sim_v][j]] == 0) {
-						int tmp = 1;
-						for (int p = 0; p < sim_v; p++) {
-							tmp = tmp * 2;
-						}
-						trans_messages += tmp;
-						sim_v=ABSENT_ELEMENT;
+						//if simulation failed
 
+						//first, setup the message
+						trans_messages |= 1 << sim_v;
+						//second, delete sim_v from simset
+						sim_v = ABSENT_ELEMENT;
 						break;
 					}
 				}
 			}
 
 			/*
-			 * print
-			 */
-			vector<VertexID>::iterator iter4;
-			printf("id=:%d\t simulate:", value().id);
-			for (iter4 = value().simcount.begin();
-					iter4 != value().simcount.end(); iter4++) {
-				VertexID tmp4 = *iter4;
-				printf("%d ", tmp4);
-			}
-			printf("after can_simulate:  ");
-			vector<VertexID>::iterator iter2;
-			for (iter2 = value().simset.begin(); iter2 != value().simset.end();
-					iter2++) {
-				VertexID tmp2 = *iter2;
-				printf("%d ", tmp2);
-			}
-			printf("\n");
-
-			/*
 			 * send message
 			 */
-			if (trans_messages != 0) {
+			if (trans_messages != 0) {//broadcast only if there is message
 				broadcast(trans_messages);
 			}
 			vote_to_halt();
@@ -230,6 +207,10 @@ public:
 	}
 
 	virtual void toline(CCVertex_pregel* v, BufferedWriter & writer) {
+		/*
+		 * this sprintf can be used only once,
+		 * otherwise, the content will be overwritten by later call
+		 */
 		sprintf(buf, "vid:%d\t can_similate:%d \n", v->value().id,
 				v->value().simset[0]);
 		writer.write(buf);
