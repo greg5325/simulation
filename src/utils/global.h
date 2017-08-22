@@ -12,9 +12,7 @@
 #include <assert.h> //for ease of debug
 using namespace std;
 
-//============================
-//label
-#define label_type char
+
 
 //============================
 ///worker info

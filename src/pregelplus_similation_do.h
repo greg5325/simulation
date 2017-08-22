@@ -5,6 +5,9 @@ using namespace std;
 typedef unsigned int UINT_32;
 typedef unsigned char UINT_8;
 #define ABSENT_ELEMENT -1
+//============================
+//label
+#define label_type char
 
 //Query graph
 struct Query_Graph {
