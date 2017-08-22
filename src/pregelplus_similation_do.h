@@ -4,6 +4,7 @@
 using namespace std;
 typedef unsigned int UINT_32;
 typedef unsigned char UINT_8;
+#define ABSENT_ELEMENT -1
 
 //Query graph
 struct Query_Graph {
@@ -116,45 +117,63 @@ public:
 			 putchar(' ');
 			 }
 			 printf("\n");*/
+
 			//broadcast message
 			broadcast(bitmap_msg);
 			vote_to_halt();
 		} else {
+			printf("vertex %d received %d messages\n", value().id,
+					messages.size());
+
+			/*
+			 * update the simcount array
+			 * according to the recieved messages
+			 */
+			for (int i = 0; i < messages.size(); i++) {
+				for (int j = 0; j < value().simcount.size(); j++) {
+					if (GetBit(messages[i], j) == 1) {
+						value().simcount[j]--;
+						assert(value().simcount[j]>=0);
+					}
+				}
+			}
+
+			/*
+			 * update the simset and setup the message
+			 *
+			 * consider using -1 to denote the absent element
+			 */
 			int trans_messages = 0x00;
-			printf("message_size=%d ", messages.size());
-
-			vector<VertexID>::iterator iter;
-			for (iter = messages.begin(); iter != messages.end(); iter++) {
-				int message = *iter;
-				for (int i = value().simcount.size(); i >= 0; i--) {
-					int minus = GetBit(message, i);
-					if (minus == 1)
-						value().simcount[i]--;
-				}
-			}
-
 			bool can_sim = true;
-			for (int j = 0; j < value().simset.size(); j++) {
-				can_sim = true;
-				int judge = value().simset[j];
-				if (judge != 404) {
-					for (int p = 0; p < q.queryVertexToEdges[judge].size();
-							p++) {
-						int j = q.queryVertexToEdges[judge][p];
-						if (value().simcount[j] <= 0)
-							can_sim = false;
+			for (int i = 0; i < value().simset.size(); i++) {
+				const int &sim_v = value().simset[i];
+				if (sim_v == ABSENT_ELEMENT)
+					continue; //Neglect the null element
+				/*
+				 * for element sim_v, check if this vertex can simulate it
+				 *
+				 * iterate over all the outNeighbors of sim_v, and check if the
+				 * updated simcount can cover sim_v's outNeighbors
+				 */
+				for (int j = 0; j < q.queryVertexToEdges[sim_v].size(); j++) {
+					int k = q.queryVertexToEdges[sim_v][j];
+					if (value().simcount[k] <= 0) {
+
+						int tmp = 1;
+						for (int p = 0; p < sim_v; p++) {
+							tmp = tmp * 2;
+						}
+						trans_messages += tmp;
+						value().simset[i] = ABSENT_ELEMENT;
+
+						break;
 					}
-				}
-				if (!can_sim) {
-					int tmp = 1;
-					for (int p = 0; p < judge; p++) {
-						tmp = tmp * 2;
-					}
-					trans_messages += tmp;
-					value().simset[j] = 404;
 				}
 			}
 
+			/*
+			 * print
+			 */
 			vector<VertexID>::iterator iter4;
 			printf("id=:%d\t simulate:", value().id);
 			for (iter4 = value().simcount.begin();
@@ -170,6 +189,10 @@ public:
 				printf("%d ", tmp2);
 			}
 			printf("\n");
+
+			/*
+			 * send message
+			 */
 			if (trans_messages != 0) {
 				broadcast(trans_messages);
 			}
