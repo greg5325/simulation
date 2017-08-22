@@ -146,7 +146,7 @@ public:
 			int trans_messages = 0x00;
 			bool can_sim = true;
 			for (int i = 0; i < value().simset.size(); i++) {
-				const int &sim_v = value().simset[i];
+				int &sim_v = value().simset[i];
 				if (sim_v == ABSENT_ELEMENT)
 					continue; //Neglect the null element
 				/*
@@ -156,15 +156,14 @@ public:
 				 * updated simcount can cover sim_v's outNeighbors
 				 */
 				for (int j = 0; j < q.queryVertexToEdges[sim_v].size(); j++) {
-					int k = q.queryVertexToEdges[sim_v][j];
-					if (value().simcount[k] <= 0) {
-
+//					int k = ;
+					if (value().simcount[q.queryVertexToEdges[sim_v][j]] == 0) {
 						int tmp = 1;
 						for (int p = 0; p < sim_v; p++) {
 							tmp = tmp * 2;
 						}
 						trans_messages += tmp;
-						value().simset[i] = ABSENT_ELEMENT;
+						sim_v=ABSENT_ELEMENT;
 
 						break;
 					}
