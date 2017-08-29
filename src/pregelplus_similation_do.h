@@ -9,14 +9,12 @@ typedef unsigned char UINT_8;
 //label
 #define label_type char
 
-//Query graph
+//=================Query graph=========================
 struct Query_Graph {
 	vector<char> labels;
 	vector<vector<VertexID> > queryVertexToEdges;
 };
-
 static Query_Graph q;
-
 void init_Query() {
 	q.labels.push_back('a');
 	q.labels.push_back('b');
@@ -36,6 +34,12 @@ void init_Query() {
 	temp.push_back(1);
 	q.queryVertexToEdges.push_back(temp);
 	temp.clear();
+}
+//=================support metric====================
+vector<int> partialSupp;
+void init(){
+	init_Query();
+	partialSupp.resize(q.labels.size(),0);
 }
 
 UINT_8 GetBit(UINT_32 number, UINT_32 index) {
@@ -95,11 +99,13 @@ public:
 			}
 			/*put all the initialization here
 			 *
-			 *initial simset
+			 *initial simset and increment the partialSupport
 			 */
 			for (int i = 0; i < q.labels.size(); ++i) {
-				if (value().label == q.labels[i])
+				if (value().label == q.labels[i]){
 					value().simset.push_back(i);
+					partialSupp[i]++;
+				}
 			}
 			/*
 			 * setup the bitmap_msg
@@ -141,6 +147,7 @@ public:
 
 			/*
 			 * update the simset and setup the message
+			 * update the partialSupp if simset is updated
 			 *
 			 * consider using -1 to denote the absent element
 			 */
@@ -158,11 +165,13 @@ public:
 				 */
 				for (int j = 0; j < q.queryVertexToEdges[sim_v].size(); j++) {
 					if (value().simcount[q.queryVertexToEdges[sim_v][j]] == 0) {
-						//if simulation failed
+						//simulation failed
 
 						//first, setup the message
 						trans_messages |= 1 << sim_v;
-						//second, delete sim_v from simset
+						//second, update partialSupp
+						partialSupp[sim_v]--;
+						//third, delete sim_v from simset
 						sim_v = ABSENT_ELEMENT;
 						break;
 					}
@@ -180,25 +189,44 @@ public:
 	}
 };
 //=============================Aggregator===================================
-struct summary{
+struct SimulationPartial{
 	int vertexNum;
 	int edgeNum;
+	vector<int> matchcount;
 };
-ibinstream & operator<<(ibinstream & m, const summary & v){
+struct SimulationFinal{
+	int vertexNum;
+	int edgeNum;
+	vector<int> matchcount;
+};
+ibinstream & operator<<(ibinstream & m, const SimulationPartial & v){
 	m<<v.vertexNum;
 	m<<v.edgeNum;
+	m<<v.matchcount;
 	return m;
 }
-
-obinstream & operator>>(obinstream & m, summary & v){
+obinstream & operator>>(obinstream & m, SimulationPartial & v){
 	m>>v.vertexNum;
 	m>>v.edgeNum;
+	m>>v.matchcount;
+	return m;
+}
+ibinstream & operator<<(ibinstream & m, const SimulationFinal & v){
+	m<<v.vertexNum;
+	m<<v.edgeNum;
+	m<<v.matchcount;
+	return m;
+}
+obinstream & operator>>(obinstream & m, SimulationFinal & v){
+	m>>v.vertexNum;
+	m>>v.edgeNum;
+	m>>v.matchcount;
 	return m;
 }
 /*
  * each worker holds an Aggregator
  */
-class CCAggregator_pregel:public Aggregator<CCVertex_pregel,summary,summary>{
+class CCAggregator_pregel:public Aggregator<CCVertex_pregel,SimulationPartial,SimulationFinal>{
 public:
 	/*
 	 * initialized at each worker before each superstep
@@ -206,6 +234,8 @@ public:
 	virtual void init() {
 		sum.vertexNum=0;
 		sum.edgeNum=0;
+		//sum.matchcount.clear();
+		//sum.matchcount.push_back(1);
 	}
 	/*
 	 * aggregate each computed vertex (after vertex compute)
@@ -219,29 +249,46 @@ public:
      * call when sync_agg by each worker (not master)
      * the returned value is gathered by the master to aggregate all the partial values
      */
-    virtual summary* finishPartial()
+    virtual SimulationPartial* finishPartial()
     {
+    	sum.matchcount=partialSupp;
         return &sum;
     }
     /*
      * only called by the master, to agg worker_partial, each worker(not master) once
      */
-    virtual void stepFinal(summary* part)
+    virtual void stepFinal(SimulationPartial* part)
     {
     	sum.vertexNum+=part->vertexNum;
     	sum.edgeNum+=part->edgeNum;
+    	sum.matchcount=partialSupp;//deep copy?
+    	for(int i=0;i<sum.matchcount.size();i++)
+    		sum.matchcount[i]+=part->matchcount[i];
     }
     /*
      * called by the master to broadcast aggregated value after aggregator finished,
      * the final aggregated value can be accessed by each worker in next super_step with: void* getAgg()
      */
-    virtual summary* finishFinal()
+    virtual SimulationFinal* finishFinal()
     {
-    	cout<<"the vertex# is "<<sum.vertexNum<<" and the edge# is "<<sum.edgeNum<<endl;
-        return &sum;
+//    	cout<<"the sum.matchcount of size "<<sum.matchcount.size()<<" is:";
+    	int supp=sum.matchcount[0];//supp value of this round. can be broadcast or for other use!
+    	for(int i=0;i<sum.matchcount.size();i++){
+//    		cout<<sum.matchcount[i]<<" ";
+    		if(supp>sum.matchcount[i])
+    			supp=sum.matchcount[i];
+    	}
+//    	cout<<endl;
+//    	cout<<"The support now is "<<supp<<endl;
+    	SimulationFinal * finalsum=(SimulationFinal*)getAgg();
+    	finalsum->vertexNum=sum.vertexNum;
+    	finalsum->edgeNum=sum.edgeNum;
+//    	cout<<"vertex#"<<sum.vertexNum<<" edge#"<<sum.edgeNum<<" matchcount#"<<sum.matchcount[0]<<endl;
+
+        return finalsum;
     }
 private:
-    summary sum;
+    SimulationPartial sum;
 };
 //=====================================================================
 class CCWorker_pregel: public Worker<CCVertex_pregel,CCAggregator_pregel> {
@@ -293,7 +340,7 @@ public:
 
 
 void pregel_similation(string in_path, string out_path, bool use_combiner) {
-	init_Query();
+	init();
 	WorkerParams param;
 	param.input_path = in_path;
 	param.output_path = out_path;
