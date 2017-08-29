@@ -74,41 +74,50 @@ obinstream & operator>>(obinstream & m, summary & v){
 	m>>v.colorsum;
 	return m;
 }
+/*
+ * each worker holds an Aggregator
+ */
 class CCAggregator_pregel:public Aggregator<CCVertex_pregel,summary,summary>{
 public:
+	/*
+	 * initialized at each worker before each superstep
+	 */
 	virtual void init() {
 		sum.idsum=0;
 		sum.colorsum=0;
 		cout<<"zjh:SP#"<<step_num()<<"W#"<<get_worker_id()<<"Agg.init"<<endl;
 	}
+	/*
+	 * aggregate each computed vertex (after vertex compute)
+	 */
     virtual void stepPartial(CCVertex_pregel* v)
     {
-//    	cout<<"zjh:SP#"<<step_num()<<"W#"<<get_worker_id()
-//				<<"("<<sum.idsum<<","<<sum.colorsum<<")"
-//    			<<"+"
-//    			<<"("<<v->id<<","<<v->value().color<<")"
-//    			<<endl;
     	sum.colorsum+=v->value().color;
     	sum.idsum+=v->id;
-
     }
+    /*
+     * call when sync_agg by each worker (not master)
+     * the returned value is gathered by the master to aggregate all the partial values
+     */
     virtual summary* finishPartial()
     {
 //    	cout<<"zjh:superstep #"<<step_num()<<"Worker #"<<get_worker_id()<<" finishPartial"<<endl;
         return &sum;
     }
-
+    /*
+     * only called by the master, to agg worker_partial, each worker(not master) once
+     */
     virtual void stepFinal(summary* part)
     {
     	sum.idsum+=part->idsum;
     	sum.colorsum+=part->colorsum;
-//    	cout<<"zjh:superstep #"<<step_num()<<"Worker #"<<get_worker_id()<<" stepFinal with part="<<*part<<endl;
     }
+    /*
+     * called by the master to broadcast aggregated value after aggregator finished,
+     * the final aggregated value can be accessed by each worker in next super_step with: void* getAgg()
+     */
     virtual summary* finishFinal()
     {
-//    	cout<<"zjh:superstep #"<<step_num()<<"Worker #"<<get_worker_id()<<" finishFinal"
-//    			<<"sum={"<<sum.idsum<<","<<sum.colorsum<<"}"
-//    			<<endl;
         return &sum;
     }
 private:

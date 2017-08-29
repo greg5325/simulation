@@ -179,8 +179,72 @@ public:
 		}
 	}
 };
+//=============================Aggregator===================================
+struct summary{
+	int vertexNum;
+	int edgeNum;
+};
+ibinstream & operator<<(ibinstream & m, const summary & v){
+	m<<v.vertexNum;
+	m<<v.edgeNum;
+	return m;
+}
 
-class CCWorker_pregel: public Worker<CCVertex_pregel> {
+obinstream & operator>>(obinstream & m, summary & v){
+	m>>v.vertexNum;
+	m>>v.edgeNum;
+	return m;
+}
+/*
+ * each worker holds an Aggregator
+ */
+class CCAggregator_pregel:public Aggregator<CCVertex_pregel,summary,summary>{
+public:
+	/*
+	 * initialized at each worker before each superstep
+	 */
+	virtual void init() {
+		sum.vertexNum=0;
+		sum.edgeNum=0;
+	}
+	/*
+	 * aggregate each computed vertex (after vertex compute)
+	 */
+    virtual void stepPartial(CCVertex_pregel* v)
+    {
+    	sum.edgeNum+=v->value().outNeighbors.size();
+    	sum.vertexNum+=1;
+    }
+    /*
+     * call when sync_agg by each worker (not master)
+     * the returned value is gathered by the master to aggregate all the partial values
+     */
+    virtual summary* finishPartial()
+    {
+        return &sum;
+    }
+    /*
+     * only called by the master, to agg worker_partial, each worker(not master) once
+     */
+    virtual void stepFinal(summary* part)
+    {
+    	sum.vertexNum+=part->vertexNum;
+    	sum.edgeNum+=part->edgeNum;
+    }
+    /*
+     * called by the master to broadcast aggregated value after aggregator finished,
+     * the final aggregated value can be accessed by each worker in next super_step with: void* getAgg()
+     */
+    virtual summary* finishFinal()
+    {
+    	cout<<"the vertex# is "<<sum.vertexNum<<" and the edge# is "<<sum.edgeNum<<endl;
+        return &sum;
+    }
+private:
+    summary sum;
+};
+//=====================================================================
+class CCWorker_pregel: public Worker<CCVertex_pregel,CCAggregator_pregel> {
 	char buf[100];
 
 public:
@@ -219,12 +283,14 @@ public:
 		writer.write(buf);
 	}
 };
-
+//=============================use no combiner==============================
 class CCCombiner_pregel: public Combiner<VertexID> {
 public:
 	virtual void combine(VertexID & old, const VertexID & new_msg) {
 	}
 };
+
+
 
 void pregel_similation(string in_path, string out_path, bool use_combiner) {
 	init_Query();
@@ -237,5 +303,7 @@ void pregel_similation(string in_path, string out_path, bool use_combiner) {
 	CCCombiner_pregel combiner;
 	if (use_combiner)
 		worker.setCombiner(&combiner);
+	CCAggregator_pregel SimulationAggregator;
+	worker.setAggregator(&SimulationAggregator);
 	worker.run(param);
 }

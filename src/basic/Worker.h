@@ -236,6 +236,11 @@ public:
                 //scattering FinalT
                 slaveBcast(*((FinalT*)global_agg));
             } else {
+            	/*
+            	 * two strategy according to the size of partial result:
+            	 * 1,if the size<=AGGSWITCH, gather all at once then reduce the result
+            	 * 2,else gather one partial result and aggregate it one by one to save space.
+            	 */
                 //------------------------ strategy choosing BEGIN ------------------------
                 int total = all_sum(0);
                 //------------------------ strategy choosing END ------------------------
