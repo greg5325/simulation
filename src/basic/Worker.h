@@ -153,6 +153,9 @@ public:
 		}
 		*/
 
+    /*
+     * compute those vertex who is active or activated by msg.
+     */
     void active_compute()
     {
         active_count = 0;
@@ -181,6 +184,9 @@ public:
         }
     }
 
+    /*
+     * compute all vertex no matter if it is active.
+     */
     void all_compute()
     {
         active_count = 0;
@@ -379,10 +385,12 @@ public:
                 agg->init();
             //===================
             clearBits();
-            if (wakeAll == 1)
+            if (wakeAll == 1){
                 all_compute();
-            else
+            }
+            else{
                 active_compute();
+            }
             message_buffer->combine();
             step_msg_num = master_sum_LL(message_buffer->get_total_msg());
             step_vadd_num = master_sum_LL(message_buffer->get_total_vadd());
