@@ -179,6 +179,7 @@ public:
                 //scattering FinalT
                 slaveBcast(*((FinalT*)global_agg));
             } else {
+            	agg->finishPartial();
             	/*
             	 * two strategy according to the size of partial result:
             	 * 1,if the size<=AGGSWITCH, gather all at once then reduce the result
@@ -355,8 +356,16 @@ public:
             worker_barrier();
             StopTimer(4);
             if (_my_rank == MASTER_RANK) {
+#ifdef DEBUG2
+            	TRACE("Master Report\n");
+#endif
                 cout << "Superstep " << global_step_num << " done. Time elapsed: " << get_timer(4) << " seconds" << endl;
                 cout << "#msgs: " << step_msg_num << ", #vadd: " << step_vadd_num << endl;
+#ifdef DEBUG2
+            	TRACE("Master Report End\n");
+#endif
+            	printf("--------------------------------------%d------------------------------------\n",step_num());
+//                cout <<"--------------------------------------------------------------------------"<<endl;
             }
         }
         worker_barrier();
@@ -782,6 +791,9 @@ public:
             hdfsDisconnect(fs);
         }
     }
+    int getworkervertexnumber(){
+    	return vertexes.size();
+    }
 
 private:
     HashT hash;
@@ -792,5 +804,7 @@ private:
     Combiner<MessageT>* combiner;
     AggregatorT* aggregator;
 };
+
+
 
 #endif

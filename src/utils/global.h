@@ -13,7 +13,10 @@
 using namespace std;
 
 
-#define TRACE (printf("%s(%d):\t",__FILE__, __LINE__), printf)
+#define TRACE (printf("%20s%4d:     ",__FILE__, __LINE__), printf)
+#define DEBUG2
+
+
 
 
 //============================
