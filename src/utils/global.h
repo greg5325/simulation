@@ -13,6 +13,8 @@
 using namespace std;
 
 
+#define TRACE (printf("%s(%d):\t",__FILE__, __LINE__), printf)
+
 
 //============================
 ///worker info

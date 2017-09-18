@@ -96,63 +96,6 @@ public:
         //PrintTimer("Reduce Time",4);
     };
 
-    //old implementation
-    /*
-		void active_compute()
-		{
-			active_count=0;
-			MessageBufT* mbuf=(MessageBufT*)get_message_buffer();
-			Map & msgs=mbuf->get_messages();
-			MessageContainerT empty;
-			for(VertexIter it=vertexes.begin(); it!=vertexes.end(); it++)
-			{
-				KeyT vid=(*it)->id;
-				MapIter mit=msgs.find(vid);
-				if(mit->second->size()==0)
-				{
-					if((*it)->is_active())
-					{
-						(*it)->compute(empty);
-						AggregatorT* agg=(AggregatorT*)get_aggregator();
-						if(agg!=NULL) agg->stepPartial(*it);
-						if((*it)->is_active()) active_count++;
-					}
-				}
-				else
-				{
-					(*it)->activate();
-					(*it)->compute(*(mit->second));
-					mit->second->clear();//clear used msgs
-					AggregatorT* agg=(AggregatorT*)get_aggregator();
-					if(agg!=NULL) agg->stepPartial(*it);
-					if((*it)->is_active()) active_count++;
-				}
-			}
-		}
-
-		void all_compute()
-		{
-			active_count=0;
-			MessageBufT* mbuf=(MessageBufT*)get_message_buffer();
-			Map & msgs=mbuf->get_messages();
-			MessageContainerT empty;
-			for(VertexIter it=vertexes.begin(); it!=vertexes.end(); it++)
-			{
-				KeyT vid=(*it)->id;
-				MapIter mit=msgs.find(vid);
-				(*it)->activate();
-				if(mit->second->size()==0) (*it)->compute(empty);
-				else{
-					(*it)->compute(*(mit->second));
-					mit->second->clear();//clear used msgs
-				}
-				AggregatorT* agg=(AggregatorT*)get_aggregator();
-				if(agg!=NULL) agg->stepPartial(*it);
-				if((*it)->is_active()) active_count++;
-			}
-		}
-		*/
-
     /*
      * compute those vertex who is active or activated by msg.
      */

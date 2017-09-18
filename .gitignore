@@ -1,3 +1,4 @@
 Debug
 Release
 .*project
+*.log
