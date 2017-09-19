@@ -19,7 +19,8 @@
  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  02111-1307, USA
  */
-#include "gspan.h"
+//#include "gspan.h"
+#include "../basic/Worker.h"
 #include <iterator>
 
 #include <stdlib.h>
@@ -28,7 +29,10 @@
 namespace GSPAN {
 
 gSpan::gSpan(void) {
-
+	labelset.push_back('a');
+	labelset.push_back('b');
+	labelset.push_back('c');
+	labelset.push_back('d');
 }
 #ifdef DEBUG1
 void gSpan::outputmp4(Projected_map4 mp, std::string prefix, std::string suffix,
@@ -81,6 +85,7 @@ void gSpan::outputdfscode(DFSCode &code) {
 }
 #endif
 
+#ifndef SIMULATION
 std::istream &gSpan::read(std::istream &is) {
 	Graph g(directed);
 	while (true) {
@@ -104,6 +109,7 @@ std::map<unsigned int, unsigned int> gSpan::support_counts(
 
 	return (counts);
 }
+#endif
 
 unsigned int gSpan::support(Projected &projected) {
 	unsigned int oid = 0xffffffff;
@@ -119,7 +125,7 @@ unsigned int gSpan::support(Projected &projected) {
 
 	return size;
 }
-
+#ifndef SIMULATION
 /* Special report function for single node graphs.
  */
 void gSpan::report_single(Graph &g, unsigned int sup) {
@@ -145,6 +151,7 @@ void gSpan::report_single(Graph &g, unsigned int sup) {
 	}
 	ID++;
 }
+#endif
 
 void gSpan::report(Projected &projected, unsigned int sup) {
 	/* Filter to small/too large graphs.
@@ -473,7 +480,24 @@ void gSpan::project(Projected &projected) {
 
 	return;
 }
+#ifdef SIMULATION
+void gSpan::run(unsigned int _minsup, unsigned int _maxpat_min,
+		unsigned int _maxpat_max, bool _enc, bool _where, bool _directed) {
+	ID = 0;
+	minsup = _minsup;
+	maxpat_min = _maxpat_min;
+	maxpat_max = _maxpat_max;
+	enc = _enc;
+	where = _where;
+	directed = _directed;
 
+	TRACE(
+			"Call parameter:\n  (_minsup=%u,_maxpat_min=%u,_maxpat_max=%u,_enc=%d,_where=%d,_directed=%d)\n",
+			minsup, maxpat_min, maxpat_max, enc, where, directed);
+
+//	run_intern();
+}
+#else
 void gSpan::run(std::istream &is, std::ostream &_os, unsigned int _minsup,
 		unsigned int _maxpat_min, unsigned int _maxpat_max, bool _enc,
 		bool _where, bool _directed) {
@@ -493,6 +517,58 @@ void gSpan::run(std::istream &is, std::ostream &_os, unsigned int _minsup,
 	read(is);
 	run_intern();
 }
+#endif
+
+#ifdef SIMULATION
+void gSpan::run_intern(void) {
+
+	Projected_map4 root4; // (v1label,elabel,v2label,direction)==>PDFS(transID,edge*,0)
+
+	EdgeList edges;
+
+	/* for hierarchy: transactionsID --> srcVertexId --> ajacentVertexes
+	 *
+	 * K,V datastructure
+	 *(svlabel,elabel,dvlabel)==>array(transID,edge*,prev*)
+	 */
+	for (unsigned int id = 0; id < TRANS.size(); ++id) {
+		Graph &g = TRANS[id];
+		for (unsigned int from = 0; from < g.size(); ++from) {
+			if (get_forward_root(g, g[from], edges)) {
+				for (EdgeList::iterator it = edges.begin(); it != edges.end();
+						++it)
+					if (g[from].label <= g[(*it)->to].label) //should be less or equal, because l<r
+						root4[g[from].label][(*it)->elabel][g[(*it)->to].label]['l'].push(
+								id, *it, 0);
+					else
+						root4[g[(*it)->to].label][(*it)->elabel][g[from].label]['r'].push(
+								id, *it, 0);
+			}
+		}
+	}
+
+	/* for hierarchy
+	 * 		svlabel -->  elabel --> dvlabel --> src
+	 */
+	for (Projected_iterator4 fromlabel = root4.begin();
+			fromlabel != root4.end(); ++fromlabel) {
+		for (Projected_iterator3 elabel = fromlabel->second.begin();
+				elabel != fromlabel->second.end(); ++elabel) {
+			for (Projected_iterator2 tolabel = elabel->second.begin();
+					tolabel != elabel->second.end(); ++tolabel) {
+				for (Projected_iterator1 src = tolabel->second.begin();
+						src != tolabel->second.end(); src++) {
+					DFS_CODE.push(0, 1, fromlabel->first, elabel->first,
+							tolabel->first, src->first);
+					project(src->second);
+					DFS_CODE.pop();
+				}
+			}
+		}
+	}
+
+}
+#else
 
 void gSpan::run_intern(void) {
 
@@ -512,7 +588,7 @@ void gSpan::run_intern(void) {
 				singleVertexLabel.begin(); it != singleVertexLabel.end();
 				++it) {
 			if ((*it).second < minsup)
-				continue;
+			continue;
 
 			unsigned int frequent_label = (*it).first;
 
@@ -545,12 +621,12 @@ void gSpan::run_intern(void) {
 			if (get_forward_root(g, g[from], edges)) {
 				for (EdgeList::iterator it = edges.begin(); it != edges.end();
 						++it)
-					if (g[from].label <= g[(*it)->to].label) //should be less or equal, because l<r
-						root4[g[from].label][(*it)->elabel][g[(*it)->to].label]['l'].push(
-								id, *it, 0);
-					else
-						root4[g[(*it)->to].label][(*it)->elabel][g[from].label]['r'].push(
-								id, *it, 0);
+				if (g[from].label <= g[(*it)->to].label) //should be less or equal, because l<r
+				root4[g[from].label][(*it)->elabel][g[(*it)->to].label]['l'].push(
+						id, *it, 0);
+				else
+				root4[g[(*it)->to].label][(*it)->elabel][g[from].label]['r'].push(
+						id, *it, 0);
 			}
 		}
 	}
@@ -579,20 +655,6 @@ void gSpan::run_intern(void) {
 					project(src->second);
 					DFS_CODE.pop();
 				}
-				/*
-				 if (tolabel->second.find('r') != tolabel->second.end()) {
-				 DFS_CODE.push(0, 1, fromlabel->first, elabel->first,
-				 tolabel->first, 'r');
-				 project(tolabel->second['r']);
-				 DFS_CODE.pop();
-				 }
-				 if (tolabel->second.find('l') != tolabel->second.end()) {
-				 DFS_CODE.push(0, 1, fromlabel->first, elabel->first,
-				 tolabel->first, 'l');
-				 project(tolabel->second['l']);
-				 DFS_CODE.pop();
-				 }
-				 */
 			}
 		}
 	}
@@ -646,5 +708,6 @@ void gSpan::run_intern(void) {
 #endif
 
 }
+#endif
 
 }

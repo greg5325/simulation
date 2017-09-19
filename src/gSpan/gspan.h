@@ -31,11 +31,9 @@
 //#define TRACE (printf("%s(%d)<%s>:\t",__FILE__, __LINE__, __FUNCTION__), printf)
 #define TRACE (printf("%s(%d):\t",__FILE__, __LINE__), printf)
 #define DIRECTED 1
-
+#define SIMULATION 1
 #ifdef DIRECTED
 #define DEBUG1
-
-
 #endif
 
 
@@ -157,7 +155,6 @@ public:
 	;
 #endif
 };
-
 typedef std::vector<int> RMPath;
 
 struct DFSCode: public std::vector<DFS> {
@@ -336,6 +333,7 @@ private:
 
 
 	std::vector<Graph> TRANS;
+	std::vector<char> labelset;
 	DFSCode DFS_CODE;
 	DFSCode DFS_CODE_IS_MIN;
 	Graph GRAPH_IS_MIN;
@@ -381,11 +379,15 @@ private:
 
 public:
 	gSpan(void);
-
+#ifdef SIMULATION
+	void run(unsigned int _minsup,
+			unsigned int _maxpat_min, unsigned int _maxpat_max, bool _enc,
+			bool _where, bool _directed);
+#else
 	void run(std::istream &is, std::ostream &_os, unsigned int _minsup,
 			unsigned int _maxpat_min, unsigned int _maxpat_max, bool _enc,
 			bool _where, bool _directed);
-
+#endif
 };
 }
 ;
