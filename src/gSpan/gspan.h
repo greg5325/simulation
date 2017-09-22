@@ -33,14 +33,13 @@
 #define DIRECTED 1
 #define SIMULATION 1
 #ifdef DIRECTED
-#define DEBUG1
+//#define DEBUG1
+#define DEBUG2
+//#define DEBUG3
 #endif
-
 
 #define maxx(a,b)    (((a) > (b)) ? (a) : (b))
 #define minn(a,b)    (((a) < (b)) ? (a) : (b))
-
-
 
 namespace GSPAN {
 
@@ -75,6 +74,10 @@ public:
 		edge[edge.size() - 1].elabel = elabel;
 		return;
 	}
+
+	void pop() {
+		edge.resize(edge.size() - 1);
+	}
 };
 
 class Graph: public std::vector<Vertex> {
@@ -97,17 +100,22 @@ public:
 		return (unsigned int) size();
 	}
 
-
 	void buildEdge();
 	// read the graph, undirected edge is represented as two opposite edge
 	std::istream &read(std::istream &);
 	std::ostream &write(std::ostream &); // write
 	void check(void);
-
+#ifdef DIRECTED
+	Graph() :
+			edge_size_(0), directed(true) {
+	}
+	;
+#else
 	Graph() :
 			edge_size_(0), directed(false) {
 	}
 	;
+#endif
 };
 
 class DFS {
@@ -133,14 +141,13 @@ public:
 #ifdef DIRECTED
 		return (d1.from == d2.from && d1.to == d2.to
 				&& d1.fromlabel == d2.fromlabel && d1.elabel == d2.elabel
-				&& d1.tolabel == d2.tolabel && d1.src==d2.src);
+				&& d1.tolabel == d2.tolabel && d1.src == d2.src);
 #else
 		return (d1.from == d2.from && d1.to == d2.to
 				&& d1.fromlabel == d2.fromlabel && d1.elabel == d2.elabel
 				&& d1.tolabel == d2.tolabel);
 #endif
 	}
-
 
 	friend bool operator !=(const DFS &d1, const DFS &d2) {
 		return (!(d1 == d2));
@@ -150,7 +157,7 @@ public:
 
 #else
 	DFS() :
-			from(0), to(0), fromlabel(0), elabel(0), tolabel(0) {
+	from(0), to(0), fromlabel(0), elabel(0), tolabel(0) {
 	}
 	;
 #endif
@@ -161,7 +168,11 @@ struct DFSCode: public std::vector<DFS> {
 private:
 	RMPath rmpath;
 public:
+#ifdef SIMULATION
+	const RMPath buildRMPath();
+#else
 	const RMPath& buildRMPath();
+#endif
 
 	/* Convert current DFS code into a graph.
 	 */
@@ -175,7 +186,8 @@ public:
 	 */
 	unsigned int nodeCount(void);
 #ifdef DIRECTED
-	void push(int from, int to, int fromlabel, int elabel, int tolabel, char direction) {
+	void push(int from, int to, int fromlabel, int elabel, int tolabel,
+			char direction) {
 		resize(size() + 1);
 		DFS &d = (*this)[size() - 1];
 
@@ -184,7 +196,7 @@ public:
 		d.fromlabel = fromlabel;
 		d.elabel = elabel;
 		d.tolabel = tolabel;
-		d.src=direction;
+		d.src = direction;
 	}
 #else
 	void push(int from, int to, int fromlabel, int elabel, int tolabel) {
@@ -282,15 +294,15 @@ public:
 typedef std::vector<Edge*> EdgeList;
 
 #ifdef DIRECTED
-bool get_forward_pure(Graph&, int , int, History&, EdgeList &);
+bool get_forward_pure(Graph&, int, int, History&, EdgeList &);
 Edge *get_backward(Graph&, Edge *, Edge *, History&, int, int);
-bool get_forward_rmpath(Graph&, int v1,int v2,Edge *, int, History&, EdgeList &);
+bool get_forward_rmpath(Graph&, int v1, int v2, Edge *, int, History&,
+		EdgeList &);
 #else
 bool get_forward_pure(Graph&, Edge *, int, History&, EdgeList &);
 Edge *get_backward(Graph&, Edge *, Edge *, History&);
 bool get_forward_rmpath(Graph&, Edge *, int, History&, EdgeList &);
 #endif
-
 
 bool get_forward_root(Graph&, Vertex&, EdgeList &);
 
@@ -298,23 +310,31 @@ class gSpan {
 
 private:
 #ifdef DIRECTED
-	typedef std::map<int, std::map<int, std::map<int, std::map<char, Projected> > > > Projected_map4;
+	typedef std::map<int,
+			std::map<int, std::map<int, std::map<char, Projected> > > > Projected_map4;
 	typedef std::map<int, std::map<int, std::map<char, Projected> > > Projected_map3;
 	typedef std::map<int, std::map<char, Projected> > Projected_map2;
 	typedef std::map<char, Projected> Projected_map1;
 
-	typedef std::map<int, std::map<int, std::map<int, std::map<char, Projected> > > >::iterator Projected_iterator4;
+	typedef std::map<int,
+			std::map<int, std::map<int, std::map<char, Projected> > > >::iterator Projected_iterator4;
 	typedef std::map<int, std::map<int, std::map<char, Projected> > >::iterator Projected_iterator3;
 	typedef std::map<int, std::map<char, Projected> >::iterator Projected_iterator2;
 	typedef std::map<char, Projected>::iterator Projected_iterator1;
 
-	typedef std::map<int, std::map<int, std::map<int, std::map<char, Projected> > > >::reverse_iterator Projected_riterator4;
+	typedef std::map<int,
+			std::map<int, std::map<int, std::map<char, Projected> > > >::reverse_iterator Projected_riterator4;
 
-	void outputmp4(Projected_map4,std::string prefix="[",std::string suffix="]",std::string indent="");
-	void outputmp3(Projected_map3,std::string prefix="[",std::string suffix="]",std::string indent="");
-	void outputmp2(Projected_map2,std::string prefix="[",std::string suffix="]",std::string indent="");
-	void outputmp1(Projected_map1,std::string prefix="[",std::string suffix="]",std::string indent="");
-	void outputProjected(Projected,std::string prefix="[",std::string suffix="]",std::string indent="");
+	void outputmp4(Projected_map4, std::string prefix = "[",
+			std::string suffix = "]", std::string indent = "");
+	void outputmp3(Projected_map3, std::string prefix = "[",
+			std::string suffix = "]", std::string indent = "");
+	void outputmp2(Projected_map2, std::string prefix = "[",
+			std::string suffix = "]", std::string indent = "");
+	void outputmp1(Projected_map1, std::string prefix = "[",
+			std::string suffix = "]", std::string indent = "");
+	void outputProjected(Projected, std::string prefix = "[",
+			std::string suffix = "]", std::string indent = "");
 
 	void outputdfscode(DFSCode&);
 
@@ -331,12 +351,15 @@ private:
 	typedef std::map<int, std::map<int, std::map<int, Projected> > >::reverse_iterator Projected_riterator3;
 #endif
 
-
 	std::vector<Graph> TRANS;
 	std::vector<char> labelset;
 	DFSCode DFS_CODE;
 	DFSCode DFS_CODE_IS_MIN;
 	Graph GRAPH_IS_MIN;
+
+#ifdef SIMULATION
+	Graph currentGraph; //save the current graph of dfscode.
+#endif
 
 	unsigned int ID;
 	unsigned int minsup;
@@ -380,9 +403,8 @@ private:
 public:
 	gSpan(void);
 #ifdef SIMULATION
-	void run(unsigned int _minsup,
-			unsigned int _maxpat_min, unsigned int _maxpat_max, bool _enc,
-			bool _where, bool _directed);
+	void run(unsigned int _minsup, unsigned int _maxpat_min,
+			unsigned int _maxpat_max, bool _enc, bool _where, bool _directed);
 #else
 	void run(std::istream &is, std::ostream &_os, unsigned int _minsup,
 			unsigned int _maxpat_min, unsigned int _maxpat_max, bool _enc,

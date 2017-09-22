@@ -23,8 +23,11 @@
 #include <assert.h>
 
 namespace GSPAN {
-
+#ifdef SIMULATION
+const RMPath DFSCode::buildRMPath() {
+#else
 const RMPath &DFSCode::buildRMPath() {
+#endif
 	rmpath.clear();
 
 	int old_from = -1;

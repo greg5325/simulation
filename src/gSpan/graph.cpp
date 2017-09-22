@@ -134,7 +134,7 @@ std::ostream &Graph::write(std::ostream &os) {
 	std::set<std::string> tmp;
 
 	for (int from = 0; from < (int) size(); ++from) {
-		os << "v " << from << " " << (*this)[from].label << std::endl;
+		os << "v " << from << " " << (char)(*this)[from].label << std::endl;
 
 		for (Vertex::edge_iterator it = (*this)[from].edge.begin();
 				it != (*this)[from].edge.end(); ++it) {

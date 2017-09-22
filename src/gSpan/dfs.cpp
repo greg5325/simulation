@@ -59,6 +59,9 @@ bool DFSCode::toGraph(Graph &g) {
 		g.resize(std::max(it->from, it->to) + 1);
 
 #ifdef DIRECTED
+//		TRACE("a new code\n");
+//		printf("(%d,%d,%c,%d,%c,%c)\n",it->from,it->to,it->fromlabel,it->elabel,it->tolabel,it->src);
+//		TRACE("a new code end\n");
 		if(it->src=='l'){
 			if (it->fromlabel != -1)
 				g[it->from].label = it->fromlabel;

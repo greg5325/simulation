@@ -21,7 +21,6 @@
  */
 #include "gspan.h"
 
-
 namespace GSPAN {
 
 /*
@@ -34,27 +33,44 @@ namespace GSPAN {
  */
 
 bool gSpan::is_min() {
+#ifdef SIMULATION
+	if (DFS_CODE.size() == 1) {
+		if (DFS_CODE[0].fromlabel > DFS_CODE[0].tolabel) {
+			assert("false");
+			return false;
+		} else
+			return (true);
+	}
+#else
 	if (DFS_CODE.size() == 1)
-		return (true);
+	return true;
+#endif
 
 	DFS_CODE.toGraph(GRAPH_IS_MIN);
 	DFS_CODE_IS_MIN.clear();
-
+#ifdef DEBUG1
+//	TRACE("report graph_is_min\n");
+//	GRAPH_IS_MIN.write(std::cout);
+//	TRACE("report graph_is_min end\n");
+#endif
 #ifdef DIRECTED
 	Projected_map4 root4;
 	//Projected_map3 root; // (fromVlabel, elabel, toVlabel) ==> Edge e
 	EdgeList edges;
 
-	for (unsigned int from = 0; from < GRAPH_IS_MIN.size(); ++from)
-		if (get_forward_root(GRAPH_IS_MIN, GRAPH_IS_MIN[from], edges))
-			for (EdgeList::iterator it = edges.begin(); it != edges.end(); ++it)
+	for (unsigned int from = 0; from < GRAPH_IS_MIN.size(); ++from) {
+		if (get_forward_root(GRAPH_IS_MIN, GRAPH_IS_MIN[from], edges)) {
+			for (EdgeList::iterator it = edges.begin(); it != edges.end();
+					++it) {
 				if (GRAPH_IS_MIN[from].label <= GRAPH_IS_MIN[(*it)->to].label)
 					root4[GRAPH_IS_MIN[from].label][(*it)->elabel][GRAPH_IS_MIN[(*it)->to].label]['l'].push(
 							0, *it, 0);
 				else
 					root4[GRAPH_IS_MIN[(*it)->to].label][(*it)->elabel][GRAPH_IS_MIN[from].label]['r'].push(
 							0, *it, 0);
-
+			}
+		}
+	}
 	Projected_iterator4 fromlabel = root4.begin();
 	Projected_iterator3 elabel = fromlabel->second.begin();
 	Projected_iterator2 tolabel = elabel->second.begin();
@@ -84,22 +100,22 @@ bool gSpan::is_min() {
 
 // TODO: if we could tell which edge should be choose to build the minimum dfscode in this step, how could we solve this problem?
 bool gSpan::project_is_min(Projected &projected) {
-	const RMPath& rmpath = DFS_CODE_IS_MIN.buildRMPath();
+	const RMPath rmpath = DFS_CODE_IS_MIN.buildRMPath();
 	int minlabel = DFS_CODE_IS_MIN[0].fromlabel;
 	int maxtoc = DFS_CODE_IS_MIN[rmpath[0]].to;
 
-	{ //backward Edge Add.
 
-		Projected_map1 root;
+	{//backward Edge Add.
+
+		Projected_map2 root;
 
 		bool flg = false; //if new backward edge can be added to DFS_CODE_IS_MIN
 
 		int newto = 0;
-#ifdef DIRECTED
-		char src = 'l';
-#endif
+		int newtolabel = 0;
 
-		for (int i = rmpath.size() - 1; !flg && i >= 1; --i) {
+
+		for (int i = rmpath.size() - 1; !flg && i >= 0; --i) {
 			for (unsigned int n = 0; n < projected.size(); ++n) {
 				PDFS *cur = &projected[n];
 				History history(GRAPH_IS_MIN, cur);
@@ -118,6 +134,7 @@ bool gSpan::project_is_min(Projected &projected) {
 					v2 = history[rmpath[0]]->from;
 				} else
 					assert(false);
+				//TRACE("report (v1=%d,v2=%d)\n",v1,v2);
 
 				Edge *e = get_backward(GRAPH_IS_MIN, history[rmpath[i]],
 						history[rmpath[0]], history, v1, v2);
@@ -126,10 +143,9 @@ bool gSpan::project_is_min(Projected &projected) {
 						history[rmpath[0]], history);
 #endif
 				if (e) {
-					root[e->elabel].push(0, e, cur);
-					newto = DFS_CODE_IS_MIN[rmpath[i]].from;
 #ifdef DIRECTED
 					//we have to assign the direction of the backward edge.
+					char src = 'l';
 					if (e->from == v2)
 						src = 'l';
 					else if (e->from == v1)
@@ -137,20 +153,38 @@ bool gSpan::project_is_min(Projected &projected) {
 					else
 						assert(false);
 #endif
+					root[e->elabel][src].push(0, e, cur);
+					newto = DFS_CODE_IS_MIN[rmpath[i]].from;
+					newtolabel = DFS_CODE_IS_MIN[rmpath[i]].fromlabel;
 					flg = true;
 				}
 			}
 		}
+//		if (flg) {
+//			TRACE("found a backward edge add\n");
+//		} else {
+//			TRACE("found no backward edge add\n");
+//		}
 
 		if (flg) {
-			Projected_iterator1 elabel = root.begin();
+			Projected_iterator2 elabel = root.begin();
+			Projected_iterator1 src=elabel->second.begin();
+//			assert(elabel->second.size()==1);
 #ifdef DIRECTED
-			DFS_CODE_IS_MIN.push(maxtoc, newto, -1, elabel->first, -1, src);
+
+#ifdef DEBUG3
+			DFS_CODE_IS_MIN.push(maxtoc, newto,-1, elabel->first,-1, src->first);
+#else
+			DFS_CODE_IS_MIN.push(maxtoc, newto,
+					DFS_CODE_IS_MIN[rmpath[0]].tolabel, elabel->first,
+					newtolabel, src->first);
+#endif
+
 #else
 			DFS_CODE_IS_MIN.push(maxtoc, newto, -1, elabel->first, -1);
 #endif
 			if (DFS_CODE[DFS_CODE_IS_MIN.size() - 1]
-					!= DFS_CODE_IS_MIN[DFS_CODE_IS_MIN.size() - 1]){
+					!= DFS_CODE_IS_MIN[DFS_CODE_IS_MIN.size() - 1]) {
 #ifdef DEBUG1
 				TRACE("not min after adding backward edge, Report\n");
 				printf("dfs_min:");
@@ -161,13 +195,14 @@ bool gSpan::project_is_min(Projected &projected) {
 #endif
 				return false;
 			}
-			return project_is_min(elabel->second);
+			return project_is_min(src->second);
 		}
 	}
 
-	{//forward edge Add.
+	{ //forward edge Add.
 		bool flg = false;
 		int newfrom = 0;
+		int newfromlabel = 0;
 #ifdef DIRECTED
 		Projected_map3 root;
 #else
@@ -192,17 +227,16 @@ bool gSpan::project_is_min(Projected &projected) {
 			if (get_forward_pure(GRAPH_IS_MIN, v, minlabel, history, edges)) {
 				flg = true;
 				newfrom = maxtoc;
+				newfromlabel = DFS_CODE_IS_MIN[rmpath[0]].tolabel;
 				for (EdgeList::iterator it = edges.begin(); it != edges.end();
 						++it)
-					if (v == (*it)->from){
+					if (v == (*it)->from) {
 						root[(*it)->elabel][GRAPH_IS_MIN[(*it)->to].label]['l'].push(
 								0, *it, cur);
-					}
-					else if (v == (*it)->to){
+					} else if (v == (*it)->to) {
 						root[(*it)->elabel][GRAPH_IS_MIN[(*it)->from].label]['r'].push(
 								0, *it, cur);
-					}
-					else
+					} else
 						assert(false);
 			}
 		}
@@ -243,7 +277,7 @@ bool gSpan::project_is_min(Projected &projected) {
 						minlabel, history, edges)) {
 					flg = true;
 					newfrom = DFS_CODE_IS_MIN[rmpath[i]].from;
-
+					newfromlabel = DFS_CODE_IS_MIN[rmpath[i]].fromlabel;
 					for (EdgeList::iterator it = edges.begin();
 							it != edges.end(); ++it)
 						if ((*it)->from == v1)
@@ -276,17 +310,23 @@ bool gSpan::project_is_min(Projected &projected) {
 		}
 #endif
 
-
 #ifdef DIRECTED
 		if (flg) {
 
 			Projected_iterator3 elabel = root.begin();
 			Projected_iterator2 tolabel = elabel->second.begin();
-			Projected_iterator1 src=tolabel->second.begin();
+			Projected_iterator1 src = tolabel->second.begin();
+
+#ifdef DEBUG3
 			DFS_CODE_IS_MIN.push(newfrom, maxtoc + 1, -1, elabel->first,
 					tolabel->first, src->first);
+#else
+			DFS_CODE_IS_MIN.push(newfrom, maxtoc + 1, newfromlabel,
+					elabel->first, tolabel->first, src->first);
+#endif
+
 			if (DFS_CODE[DFS_CODE_IS_MIN.size() - 1]
-					!= DFS_CODE_IS_MIN[DFS_CODE_IS_MIN.size() - 1]){
+					!= DFS_CODE_IS_MIN[DFS_CODE_IS_MIN.size() - 1]) {
 #ifdef DEBUG1
 				TRACE("not min after adding forward edge, Report\n");
 				printf("dfs_min:");
@@ -307,7 +347,7 @@ bool gSpan::project_is_min(Projected &projected) {
 					tolabel->first);
 			if (DFS_CODE[DFS_CODE_IS_MIN.size() - 1]
 					!= DFS_CODE_IS_MIN[DFS_CODE_IS_MIN.size() - 1])
-				return false;
+			return false;
 			return project_is_min(tolabel->second);
 		}
 #endif
