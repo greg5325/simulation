@@ -50,6 +50,7 @@ bool all_lor(bool my_copy){
 //char-level send/recv
 void pregel_send(void* buf, int size, int dst)
 {
+	//MPI_Send(data,count,datatype,destination,int tag,MPI_Comm)
     MPI_Send(buf, size, MPI_CHAR, dst, 0, MPI_COMM_WORLD);
 }
 

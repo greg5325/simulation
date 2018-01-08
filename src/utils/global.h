@@ -14,7 +14,7 @@ using namespace std;
 
 
 #define TRACE (printf("%20s%4d:     ",__FILE__, __LINE__), printf)
-#define DEBUG2
+//#define DEBUG2
 
 
 
@@ -153,7 +153,9 @@ inline int& active_vnum()
 enum BITS {
     HAS_MSG_ORBIT = 0,
     FORCE_TERMINATE_ORBIT = 1,
-    WAKE_ALL_ORBIT = 2
+    WAKE_ALL_ORBIT = 2,
+    Query_Mutated=3,
+    PreProcessing=4
 };
 //currently, only 3 bits are used, others can be defined by users
 char global_bor_bitmap;

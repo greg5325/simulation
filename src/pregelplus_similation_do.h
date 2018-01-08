@@ -5,43 +5,12 @@ using namespace std;
 typedef unsigned int UINT_32;
 typedef unsigned char UINT_8;
 #define ABSENT_ELEMENT -1
-//============================
-//label
-#define label_type char
+#define PRESENT_ELEMENT 1
 
-//=================Query graph=========================
-struct Query_Graph {
-	vector<char> labels;
-	vector<vector<VertexID> > queryVertexToEdges;
-};
-static Query_Graph q;
-void init_Query() {
-	q.labels.push_back('a');
-	q.labels.push_back('b');
-	q.labels.push_back('c');
-	q.labels.push_back('d');
-	vector<VertexID> temp;
-	temp.push_back(1);
-	temp.push_back(2);
-	q.queryVertexToEdges.push_back(temp);
-	temp.clear();
-	temp.push_back(2);
-	q.queryVertexToEdges.push_back(temp);
-	temp.clear();
-	temp.push_back(3);
-	q.queryVertexToEdges.push_back(temp);
-	temp.clear();
-	temp.push_back(1);
-	q.queryVertexToEdges.push_back(temp);
-	temp.clear();
-}
-//=================support metric====================
-vector<int> partialSupp;
-void init() {
-	init_Query();
-	partialSupp.resize(q.labels.size(), 0);
-}
-
+//void init() {
+//	init_Query();
+//	partialSupp.resize(q.labels.size(), 0);
+//}
 UINT_8 GetBit(UINT_32 number, UINT_32 index) {
 	if (index < 0 || index > 31)
 		return 0xff; //如果传入参数有问题，则返回0xff，表示异常
@@ -53,11 +22,9 @@ struct CCValue_pregel {
 	int id;
 	int inDegree;
 	vector<VertexID> outNeighbors; //邻接顶点
-	vector<VertexID> simcount; //子结点simulate数[*,*,*....]
-	/*
-	 * TODO:for simset, consider using bitmap to store the set to accelerate the process
-	 */
-	vector<VertexID> simset; //自身simulate结点{*,*...}
+	vector<vector<int> > simcountStack; //子结点simulate数[*,*,*....]
+//TODO:for simset, consider using bitmap to store the set to accelerate the process
+	vector<vector<VertexID> > simsetStack; //自身simulate结点{*,*...}
 };
 
 ibinstream & operator<<(ibinstream & m, const CCValue_pregel & v) {
@@ -65,8 +32,6 @@ ibinstream & operator<<(ibinstream & m, const CCValue_pregel & v) {
 	m << v.id;
 	m << v.inDegree;
 	m << v.outNeighbors;
-	m << v.simcount;
-	m << v.simset;
 	return m;
 }
 
@@ -75,8 +40,6 @@ obinstream & operator>>(obinstream & m, CCValue_pregel & v) {
 	m >> v.id;
 	m >> v.inDegree;
 	m >> v.outNeighbors;
-	m >> v.simcount;
-	m >> v.simset;
 	return m;
 }
 
@@ -89,62 +52,135 @@ public:
 		}
 	}
 
-	virtual void compute(MessageContainer & messages) {
-		if (step_num() == 1) {
-			/*
-			 * initial the simcount array, the size of this array equals to the number of vertex
-			 */
-			for (int j = 0; j < q.labels.size(); j++) {
-				value().simcount.push_back(value().inDegree);
+	void Vnormalcompute(MessageContainer & messages) {
+		vector<vector<VertexID> > &simsetStack = value().simsetStack;
+		vector<vector<int> > &simcountStack = value().simcountStack;
+		if (mutated) {
+			//first, simcountStack and simsetStack
+			simsetStack.resize(edges.size());
+			if (simsetStack.size() > 1) {
+				simsetStack[simsetStack.size() - 1] =
+						simsetStack[simsetStack.size() - 2];
 			}
-			/*put all the initialization here
-			 *
-			 *initial simset and increment the partialSupport
-			 */
-			for (int i = 0; i < q.labels.size(); ++i) {
-				if (value().label == q.labels[i]) {
-					value().simset.push_back(i);
-					partialSupp[i]++;
-				}
-			}
-			/*
-			 * setup the bitmap_msg
-			 */
-			int bitmap_msg = 0x0;
-			for (int i = 0; i < q.labels.size(); i++) {
-				if (q.labels[i] != value().label) {
-					bitmap_msg |= 1 << i;
-				}
-			}
-			/*
-			 * print the bitmap message
-			 */
-			/*			printf("bitmap_msg from v %d is %d:", value().id,bitmap_msg);
-			 for (int i = 31; i >= 0; i--) {
-			 printf("%d", GetBit(bitmap_msg, i));
-			 if (i % 8 == 0)
-			 putchar(' ');
-			 }
-			 printf("\n");*/
+			simsetStack[simsetStack.size() - 1].resize(q.labels.size());
 
-			//broadcast message
-			broadcast(bitmap_msg);
+			vector<VertexID> &simset = simsetStack[simsetStack.size() - 1];
+
+			simcountStack.resize(edges.size());
+			if (simcountStack.size() > 1) {
+				simcountStack[simcountStack.size() - 1] =
+						simcountStack[simcountStack.size() - 2];
+			}
+			simcountStack[simcountStack.size() - 1].resize(q.labels.size());
+			vector<int> &simcount = simcountStack[simcountStack.size() - 1];
+
+			vector<int> &partialSupp = partialSuppStack[partialSuppStack.size()
+					- 1];
+//			/*
+//			 * initial the simcount array, the size of this array equals to the number of vertex
+//			 */
+//			for (int j = 0; j < q.labels.size(); j++) {
+//				value().simcount.push_back(value().inDegree);
+//			}
+
+			if (gspanMsg.fromlabel != -1) {
+				simcount[gspanMsg.fromid] = value().inDegree;
+			}
+			if (gspanMsg.tolabel != -1) {
+				simcount[gspanMsg.toid] = value().inDegree;
+			}
+
+//			 *initial simset and increment the partialSupport
+//			 */
+//			for (int i = 0; i < q.labels.size(); ++i) {
+//				if (value().label == q.labels[i]) {
+//					value().simset.push_back(i);
+//					partialSupp[i]++;
+//				}
+//			}
+			if (gspanMsg.fromlabel != -1) {
+				if (value().label == gspanMsg.fromlabel) {
+					simset[gspanMsg.fromid] = PRESENT_ELEMENT;
+					partialSupp[gspanMsg.fromid]++;
+				} else {
+					simset[gspanMsg.fromid] = ABSENT_ELEMENT;
+				}
+			}
+			if (gspanMsg.tolabel != -1) {
+				if (value().label == gspanMsg.tolabel) {
+					simset[gspanMsg.toid] = PRESENT_ELEMENT;
+					partialSupp[gspanMsg.toid]++;
+				} else {
+					simset[gspanMsg.toid] = ABSENT_ELEMENT;
+				}
+			}
+//			/*
+//			 * setup the bitmap_msg
+//			 */
+//			int bitmap_msg = 0x0;
+//			for (int i = 0; i < q.labels.size(); i++) {
+//				if (q.labels[i] != value().label) {
+//					bitmap_msg |= 1 << i;
+//				}
+//			}
+
+			//----------------pack up msg for sim a--------------------------
+			int bitmap_msg = 0x0;
+
+			//for new a, we have to update according to itself
+			if (simset[gspanMsg.fromid] == ABSENT_ELEMENT
+					&& gspanMsg.fromlabel != -1) {
+				bitmap_msg |= 1 << gspanMsg.fromid;
+			}
+			//update according to b
+			if (simset[gspanMsg.fromid] == PRESENT_ELEMENT) {
+				if (simcount[gspanMsg.toid] == 0) {
+					simset[gspanMsg.fromid] = ABSENT_ELEMENT;
+					partialSupp[gspanMsg.fromid]--;
+					bitmap_msg |= 1 << gspanMsg.fromid;
+				}
+			}
+			//---------------update sim b--------------------------
+			//only need to update new b according to itself
+			if (simset[gspanMsg.toid] == ABSENT_ELEMENT
+					&& gspanMsg.tolabel != -1) {
+				bitmap_msg |= 1 << gspanMsg.toid;
+			}
+//			/*
+//			 * print the bitmap message
+//			 */
+//			/*			printf("bitmap_msg from v %d is %d:", value().id,bitmap_msg);
+//			 for (int i = 31; i >= 0; i--) {
+//			 printf("%d", GetBit(bitmap_msg, i));
+//			 if (i % 8 == 0)
+//			 putchar(' ');
+//			 }
+//			 printf("\n");*/
+//
+//			//broadcast message
+			if (bitmap_msg != 0)
+				broadcast(bitmap_msg);
 			vote_to_halt();
 		} else {
 
+			//alias here
+
+			vector<VertexID> &simset = simsetStack[simsetStack.size() - 1];
+			vector<int> &simcount = simcountStack[simcountStack.size() - 1];
+			vector<int> &partialSupp = partialSuppStack[partialSuppStack.size()
+					- 1];
 			/*
 			 * update the simcount array
 			 * according to the recieved messages
 			 */
 			for (int i = 0; i < messages.size(); i++) {
-				for (int j = 0; j < value().simcount.size(); j++) {
+				for (int j = 0; j < simcount.size(); j++) {
 					if (GetBit(messages[i], j) == 1) {
-						value().simcount[j]--;
-						assert(value().simcount[j]>=0);
+						simcount[j]--;
+						assert(simcount[j]>=0);
 					}
 				}
 			}
-
 			/*
 			 * update the simset and setup the message
 			 * update the partialSupp if simset is updated
@@ -153,26 +189,25 @@ public:
 			 */
 			int trans_messages = 0x00;
 			bool can_sim = true;
-			for (int i = 0; i < value().simset.size(); i++) {
-				int &sim_v = value().simset[i];
-				if (sim_v == ABSENT_ELEMENT)
+			for (int i = 0; i < simset.size(); i++) {
+				if (simset[i] == ABSENT_ELEMENT)
 					continue; //Neglect the null element
 				/*
-				 * for element sim_v, check if this vertex can simulate it
+				 * for element i, check if this vertex can simulate it
 				 *
-				 * iterate over all the outNeighbors of sim_v, and check if the
-				 * updated simcount can cover sim_v's outNeighbors
+				 * iterate over all the outNeighbors of i, and check if the
+				 * updated simcount can cover i's outNeighbors
 				 */
-				for (int j = 0; j < q.queryVertexToEdges[sim_v].size(); j++) {
-					if (value().simcount[q.queryVertexToEdges[sim_v][j]] == 0) {
+				for (int j = 0; j < q.queryVertexToEdges[i].size(); j++) {
+					if (simcount[q.queryVertexToEdges[i][j]] == 0) {
 						//simulation failed
 
 						//first, setup the message
-						trans_messages |= 1 << sim_v;
+						trans_messages |= 1 << i;
 						//second, update partialSupp
-						partialSupp[sim_v]--;
+						partialSupp[i]--;
 						//third, delete sim_v from simset
-						sim_v = ABSENT_ELEMENT;
+						simset[i] = ABSENT_ELEMENT;
 						break;
 					}
 				}
@@ -187,112 +222,88 @@ public:
 			vote_to_halt();
 		}
 	}
+
+	void Vpreprocessing(MessageContainer & messages) {
+		if (preprocessSuperstep == 1) {
+			vector<VertexID> & nbs = value().outNeighbors;
+			for (int i = 0; i < nbs.size(); i++) {
+				send_message(nbs[i], value().label);
+			}
+		}
+		else if(preprocessSuperstep==2){
+			//summarize the edge frequency in this partition
+			for(MessageContainer::iterator it=messages.begin();it!=messages.end();++it){
+				edgeFrequent[value().label][*it]++;
+			}
+		}
+		vote_to_halt();
+	}
+
+	virtual void compute(MessageContainer & messages) {
+		if (phase == preprocessing) {
+			Vpreprocessing(messages);
+		} else if (phase == normalcomputing) {
+			Vnormalcompute(messages);
+		}
+	}
 };
 //=============================Aggregator==============================================================================
 struct SimulationPartial {
-	int vertexNum;
-	int edgeNum;
 	vector<int> matchcount;
 };
 struct SimulationFinal {
-	int vertexNum;
-	int edgeNum;
 	vector<int> matchcount;
 };
 ibinstream & operator<<(ibinstream & m, const SimulationPartial & v) {
-	m << v.vertexNum;
-	m << v.edgeNum;
 	m << v.matchcount;
 	return m;
 }
 obinstream & operator>>(obinstream & m, SimulationPartial & v) {
-	m >> v.vertexNum;
-	m >> v.edgeNum;
 	m >> v.matchcount;
 	return m;
 }
 ibinstream & operator<<(ibinstream & m, const SimulationFinal & v) {
-	m << v.vertexNum;
-	m << v.edgeNum;
 	m << v.matchcount;
 	return m;
 }
 obinstream & operator>>(obinstream & m, SimulationFinal & v) {
-	m >> v.vertexNum;
-	m >> v.edgeNum;
 	m >> v.matchcount;
 	return m;
 }
-void * workercontext = 0;
-/*
- * each worker holds an Aggregator
+
+/* each worker holds an Aggregator
  */
 class CCAggregator_pregel: public Aggregator<CCVertex_pregel, SimulationPartial,
 		SimulationFinal> {
 public:
-	/*
-	 * initialized at each worker before each superstep
-	 */
+	//initialized at each worker before each superstep
 	virtual void init() {
-		printf("Aggregator init on worker#%d with %d number of vertexes\n",
-				_my_rank,
-				((Worker<CCVertex_pregel, CCAggregator_pregel>*) workercontext)->getworkervertexnumber());
-		sum.vertexNum = 0;
-		sum.edgeNum = 0;
-		//sum.matchcount.clear();
-		//sum.matchcount.push_back(1);
 	}
-	/*
-	 * aggregate each computed vertex (after vertex compute)
-	 */
+	//aggregate each computed vertex (after vertex compute)
 	virtual void stepPartial(CCVertex_pregel* v) {
-		printf("Aggregator stepPartial on worker#%d v#%d step#%d\n", _my_rank,
-				v->value().id, step_num());
-		sum.edgeNum += v->value().outNeighbors.size();
-		sum.vertexNum += 1;
 	}
-	/*
-	 * call when sync_agg by each worker (not master)
-	 * the returned value is gathered by the master to aggregate all the partial values
-	 */
+	//call when sync_agg by each worker (not master)
+	//the returned value is gathered by the master to aggregate all the partial values
 	virtual SimulationPartial* finishPartial() {
-		printf("Aggregator finishPartial on worker#%d step#%d\n", _my_rank,
-				step_num());
-		sum.matchcount = partialSupp; //deep copy?
+		sum.matchcount = partialSuppStack[partialSuppStack.size() - 1]; //deep copy?
 		return &sum;
 	}
-	/*
-	 * only called by the master, to agg worker_partial, each worker(not master) once
-	 */
+	//only called by the master, to agg worker_partial, each worker(not master) once
 	virtual void stepFinal(SimulationPartial* part) {
-		printf("Aggregator stepFinal on worker#%d step#%d\n", _my_rank,
-				step_num());
-		sum.vertexNum += part->vertexNum;
-		sum.edgeNum += part->edgeNum;
 		for (int i = 0; i < sum.matchcount.size(); i++)
 			sum.matchcount[i] += part->matchcount[i];
 	}
-	/*
-	 * called by the master before broadcast aggregated value to workers,
-	 * the final aggregated value can be accessed by each worker in next super_step with: void* getAgg()
-	 */
+	//called by the master before broadcast aggregated value to workers,
+	//the final aggregated value can be accessed by each worker in next super_step with: void* getAgg()
 	virtual SimulationFinal* finishFinal() {
-		printf("Aggregator finishFinal on worker#%d step#%d\n", _my_rank,
-				step_num());
-//    	cout<<"the sum.matchcount of size "<<sum.matchcount.size()<<" is:";
-		int supp = sum.matchcount[0]; //supp value of this round. can be broadcast or for other use!
+		supp = sum.matchcount[0]; //supp value of this round. can be broadcast or for other use!
+		cout << "supVector:";
 		for (int i = 0; i < sum.matchcount.size(); i++) {
-    		cout<<sum.matchcount[i]<<" ";
-			if (supp > sum.matchcount[i])
-				supp = sum.matchcount[i];
+			cout << sum.matchcount[i] << " ";
+			supp = supp <= sum.matchcount[i] ? supp : sum.matchcount[i];
 		}
-//    	cout<<endl;
-//    	cout<<"The support now is "<<supp<<endl;
+		cout << endl;
 		SimulationFinal * finalsum = (SimulationFinal*) getAgg();
-		finalsum->vertexNum = sum.vertexNum;
-		finalsum->edgeNum = sum.edgeNum;
-//    	cout<<"vertex#"<<sum.vertexNum<<" edge#"<<sum.edgeNum<<" matchcount#"<<sum.matchcount[0]<<endl;
-
 		return finalsum;
 	}
 private:
@@ -315,7 +326,11 @@ public:
 		v->value().id = v->id;
 		pch = strtok(NULL, " "); //label
 		char* label = pch;
+#ifdef little
 		v->value().label = label[0];
+#else
+		v->value().label = atoi(label);
+#endif
 		pch = strtok(NULL, " "); //outDegree
 		int num = atoi(pch);
 		for (int i = 0; i < num; i++) {
@@ -329,25 +344,26 @@ public:
 	}
 
 	virtual void toline(CCVertex_pregel* v, BufferedWriter & writer) {
-		/*
-		 * this sprintf can be used only once,
-		 * otherwise, the content will be overwritten by later call
-		 */
-		sprintf(buf, "vid:%d\t can_similate:%d \n", v->value().id,
-				v->value().simset[0]);
+//		sprintf(buf, "vid:%d\t can_similate:%d \n", v->value().id,
+//				v->value().simset[0]);
 		writer.write(buf);
 	}
+
 };
 //=============================use no combiner==============================
 class CCCombiner_pregel: public Combiner<VertexID> {
 public:
 	virtual void combine(VertexID & old, const VertexID & new_msg) {
-
 	}
 };
 
+void mine() {
+	Worker<CCVertex_pregel, CCAggregator_pregel> * w = (Worker<CCVertex_pregel,
+			CCAggregator_pregel>*) workercontext;
+	w->looponsim();
+}
 void pregel_similation(string in_path, string out_path, bool use_combiner) {
-	init();
+//	init();
 	WorkerParams param;
 	param.input_path = in_path;
 	param.output_path = out_path;

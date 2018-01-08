@@ -1,310 +1,168 @@
-../src/basic/../gSpan/gspanImpl.h(808):	Call parameter:
-  (_minsup=1,_maxpat_min=1,_maxpat_max=3,_enc=0,_where=0,_directed=1)
-(0,1,a,0,a,l)(1,0,a,0,a,l)(1,2,a,0,a,l)(2,0,a,0,a,l)(2,0,a,0,a,r)(2,1,a,0,a,l)
-1
-total=24,notmin=12,exceeds=6,reported=6
-total=42,notmin=12,exceeds=24,reported=6
-total=61,notmin=13,exceeds=42,reported=6
-total=82,notmin=21,exceeds=54,reported=7
-total=103,notmin=29,exceeds=66,reported=8
-total=121,notmin=29,exceeds=84,reported=8
-total=141,notmin=36,exceeds=95,reported=10
-total=159,notmin=38,exceeds=111,reported=10
-(0,1,a,0,a,l)(1,0,a,0,a,l)(1,2,a,0,b,l)(2,0,b,0,a,l)(2,0,b,0,a,r)(2,1,b,0,a,l)
-2
-total=179,notmin=44,exceeds=121,reported=14
-total=195,notmin=46,exceeds=135,reported=14
-total=213,notmin=49,exceeds=149,reported=15
-total=229,notmin=51,exceeds=163,reported=15
-total=248,notmin=59,exceeds=173,reported=16
-total=267,notmin=63,exceeds=187,reported=17
-total=283,notmin=65,exceeds=201,reported=17
-total=301,notmin=72,exceeds=210,reported=19
-total=317,notmin=76,exceeds=222,reported=19
-(0,1,a,0,a,l)(1,0,a,0,a,l)(1,2,a,0,c,l)(2,0,c,0,a,l)(2,0,c,0,a,r)(2,1,c,0,a,l)
-3
-total=335,notmin=82,exceeds=230,reported=23
-total=349,notmin=86,exceeds=240,reported=23
-total=365,notmin=91,exceeds=250,reported=24
-total=379,notmin=95,exceeds=260,reported=24
-total=396,notmin=103,exceeds=268,reported=25
-total=413,notmin=109,exceeds=278,reported=26
-total=427,notmin=113,exceeds=288,reported=26
-total=443,notmin=120,exceeds=295,reported=28
-total=457,notmin=126,exceeds=303,reported=28
-total=463,notmin=132,exceeds=303,reported=28
-total=485,notmin=146,exceeds=309,reported=30
-total=506,notmin=148,exceeds=327,reported=31
-total=525,notmin=150,exceeds=344,reported=31
-total=545,notmin=159,exceeds=354,reported=32
-total=565,notmin=160,exceeds=369,reported=36
-total=581,notmin=161,exceeds=384,reported=36
-total=599,notmin=163,exceeds=399,reported=37
-total=615,notmin=164,exceeds=414,reported=37
-total=635,notmin=167,exceeds=429,reported=39
-total=651,notmin=168,exceeds=444,reported=39
-total=670,notmin=171,exceeds=459,reported=40
-total=686,notmin=172,exceeds=474,reported=40
-total=704,notmin=173,exceeds=488,reported=43
-total=719,notmin=174,exceeds=502,reported=43
-total=736,notmin=176,exceeds=516,reported=44
-total=751,notmin=177,exceeds=530,reported=44
-total=769,notmin=178,exceeds=543,reported=48
-total=783,notmin=179,exceeds=556,reported=48
-total=799,notmin=181,exceeds=569,reported=49
-total=813,notmin=182,exceeds=582,reported=49
-total=831,notmin=185,exceeds=595,reported=51
-total=845,notmin=186,exceeds=608,reported=51
-total=862,notmin=189,exceeds=621,reported=52
-total=876,notmin=190,exceeds=634,reported=52
-total=892,notmin=191,exceeds=646,reported=55
-total=905,notmin=192,exceeds=658,reported=55
-total=920,notmin=194,exceeds=670,reported=56
-total=933,notmin=195,exceeds=682,reported=56
-total=947,notmin=203,exceeds=687,reported=57
-total=960,notmin=204,exceeds=697,reported=59
-total=970,notmin=204,exceeds=707,reported=59
-total=980,notmin=204,exceeds=716,reported=60
-total=990,notmin=204,exceeds=724,reported=62
-total=998,notmin=204,exceeds=732,reported=62
-total=1006,notmin=204,exceeds=739,reported=63
-total=1006,notmin=204,exceeds=739,reported=63
-total=1026,notmin=210,exceeds=749,reported=67
-total=1042,notmin=212,exceeds=763,reported=67
-total=1058,notmin=214,exceeds=776,reported=68
-(0,1,a,0,b,l)(1,0,b,0,a,l)(1,2,b,0,b,l)(2,0,b,0,a,l)(2,0,b,0,a,r)(2,1,b,0,b,l)
-4
-total=1076,notmin=220,exceeds=784,reported=72
-total=1090,notmin=222,exceeds=796,reported=72
-total=1106,notmin=223,exceeds=810,reported=73
-total=1120,notmin=223,exceeds=824,reported=73
-total=1138,notmin=225,exceeds=838,reported=75
-total=1152,notmin=225,exceeds=852,reported=75
-total=1169,notmin=227,exceeds=866,reported=76
-total=1183,notmin=227,exceeds=880,reported=76
-total=1199,notmin=228,exceeds=893,reported=78
-total=1214,notmin=229,exceeds=906,reported=79
-total=1227,notmin=229,exceeds=919,reported=79
-(0,1,a,0,b,l)(1,0,b,0,a,l)(1,2,b,0,c,l)(2,0,c,0,a,l)(2,0,c,0,a,r)(2,1,c,0,b,l)
-5
-total=1243,notmin=229,exceeds=931,reported=83
-total=1255,notmin=229,exceeds=943,reported=83
-total=1269,notmin=230,exceeds=955,reported=84
-total=1281,notmin=230,exceeds=967,reported=84
-total=1297,notmin=232,exceeds=979,reported=86
-total=1309,notmin=232,exceeds=991,reported=86
-total=1324,notmin=234,exceeds=1003,reported=87
-total=1336,notmin=234,exceeds=1015,reported=87
-total=1350,notmin=234,exceeds=1026,reported=90
-total=1361,notmin=234,exceeds=1037,reported=90
-total=1374,notmin=235,exceeds=1048,reported=91
-total=1385,notmin=235,exceeds=1059,reported=91
-total=1397,notmin=241,exceeds=1063,reported=93
-total=1407,notmin=241,exceeds=1073,reported=93
-total=1417,notmin=241,exceeds=1082,reported=94
-total=1427,notmin=241,exceeds=1090,reported=96
-total=1435,notmin=241,exceeds=1098,reported=96
-total=1443,notmin=241,exceeds=1105,reported=97
-total=1443,notmin=241,exceeds=1105,reported=97
-total=1461,notmin=244,exceeds=1119,reported=98
-total=1477,notmin=250,exceeds=1128,reported=99
-total=1496,notmin=253,exceeds=1141,reported=102
-total=1510,notmin=254,exceeds=1154,reported=102
-total=1528,notmin=262,exceeds=1162,reported=104
-total=1542,notmin=264,exceeds=1174,reported=104
-total=1559,notmin=266,exceeds=1188,reported=105
-total=1573,notmin=266,exceeds=1202,reported=105
-total=1589,notmin=268,exceeds=1214,reported=107
-total=1603,notmin=270,exceeds=1226,reported=107
-total=1619,notmin=270,exceeds=1238,reported=111
-total=1631,notmin=270,exceeds=1250,reported=111
-total=1645,notmin=271,exceeds=1262,reported=112
-total=1657,notmin=271,exceeds=1274,reported=112
-total=1673,notmin=273,exceeds=1286,reported=114
-total=1685,notmin=273,exceeds=1298,reported=114
-total=1700,notmin=275,exceeds=1310,reported=115
-total=1712,notmin=275,exceeds=1322,reported=115
-total=1726,notmin=275,exceeds=1333,reported=118
-total=1737,notmin=275,exceeds=1344,reported=118
-total=1750,notmin=276,exceeds=1355,reported=119
-total=1761,notmin=276,exceeds=1366,reported=119
-total=1773,notmin=283,exceeds=1370,reported=120
-total=1783,notmin=284,exceeds=1378,reported=121
-total=1793,notmin=284,exceeds=1386,reported=123
-total=1801,notmin=284,exceeds=1394,reported=123
-total=1809,notmin=284,exceeds=1401,reported=124
-total=1809,notmin=284,exceeds=1401,reported=124
-total=1827,notmin=290,exceeds=1409,reported=128
-total=1841,notmin=294,exceeds=1419,reported=128
-total=1855,notmin=298,exceeds=1428,reported=129
-total=1869,notmin=300,exceeds=1438,reported=131
-total=1881,notmin=302,exceeds=1448,reported=131
-total=1893,notmin=304,exceeds=1457,reported=132
-(0,1,a,0,c,l)(1,0,c,0,a,l)(1,2,c,0,c,l)(2,0,c,0,a,l)(2,0,c,0,a,r)(2,1,c,0,c,l)
-6
-total=1907,notmin=310,exceeds=1461,reported=136
-total=1917,notmin=314,exceeds=1467,reported=136
-total=1929,notmin=315,exceeds=1477,reported=137
-total=1939,notmin=315,exceeds=1487,reported=137
-total=1953,notmin=317,exceeds=1497,reported=139
-total=1963,notmin=317,exceeds=1507,reported=139
-total=1976,notmin=319,exceeds=1517,reported=140
-total=1986,notmin=319,exceeds=1527,reported=140
-total=1998,notmin=320,exceeds=1536,reported=142
-total=2009,notmin=321,exceeds=1545,reported=143
-total=2018,notmin=321,exceeds=1554,reported=143
-total=2028,notmin=327,exceeds=1556,reported=145
-total=2036,notmin=327,exceeds=1564,reported=145
-total=2044,notmin=327,exceeds=1571,reported=146
-total=2044,notmin=327,exceeds=1571,reported=146
-total=2060,notmin=332,exceeds=1581,reported=147
-total=2074,notmin=338,exceeds=1588,reported=148
-total=2088,notmin=340,exceeds=1598,reported=150
-total=2100,notmin=342,exceeds=1608,reported=150
-total=2112,notmin=344,exceeds=1617,reported=151
-total=2127,notmin=347,exceeds=1626,reported=154
-total=2137,notmin=348,exceeds=1635,reported=154
-total=2151,notmin=356,exceeds=1639,reported=156
-total=2161,notmin=360,exceeds=1645,reported=156
-total=2174,notmin=362,exceeds=1655,reported=157
-total=2184,notmin=362,exceeds=1665,reported=157
-total=2196,notmin=364,exceeds=1673,reported=159
-total=2206,notmin=366,exceeds=1681,reported=159
-total=2216,notmin=373,exceeds=1683,reported=160
-total=2224,notmin=374,exceeds=1689,reported=161
-total=2224,notmin=374,exceeds=1689,reported=161
-total=2242,notmin=382,exceeds=1697,reported=163
-total=2259,notmin=389,exceeds=1704,reported=166
-total=2272,notmin=391,exceeds=1715,reported=166
-total=2287,notmin=393,exceeds=1727,reported=167
-total=2300,notmin=394,exceeds=1739,reported=167
-total=2314,notmin=397,exceeds=1749,reported=168
-total=2329,notmin=397,exceeds=1760,reported=172
-total=2340,notmin=397,exceeds=1771,reported=172
-total=2353,notmin=398,exceeds=1782,reported=173
-total=2364,notmin=398,exceeds=1793,reported=173
-total=2379,notmin=400,exceeds=1804,reported=175
-total=2390,notmin=400,exceeds=1815,reported=175
-total=2404,notmin=402,exceeds=1826,reported=176
-total=2415,notmin=402,exceeds=1837,reported=176
-total=2428,notmin=402,exceeds=1847,reported=179
-total=2438,notmin=402,exceeds=1857,reported=179
-total=2450,notmin=403,exceeds=1867,reported=180
-total=2460,notmin=403,exceeds=1877,reported=180
-total=2470,notmin=409,exceeds=1880,reported=181
-total=2480,notmin=409,exceeds=1888,reported=183
-total=2488,notmin=409,exceeds=1896,reported=183
-total=2496,notmin=409,exceeds=1903,reported=184
-total=2496,notmin=409,exceeds=1903,reported=184
-(0,1,b,0,b,l)(1,0,b,0,b,l)(1,2,b,0,b,l)(2,0,b,0,b,l)(2,0,b,0,b,r)(2,1,b,0,b,l)
-7
-total=2514,notmin=417,exceeds=1907,reported=190
-total=2526,notmin=417,exceeds=1919,reported=190
-total=2539,notmin=418,exceeds=1931,reported=190
-total=2554,notmin=424,exceeds=1939,reported=191
-total=2569,notmin=430,exceeds=1947,reported=192
-total=2581,notmin=430,exceeds=1959,reported=192
-total=2595,notmin=435,exceeds=1966,reported=194
-total=2607,notmin=437,exceeds=1976,reported=194
-(0,1,b,0,b,l)(1,0,b,0,b,l)(1,2,b,0,c,l)(2,0,c,0,b,l)(2,0,c,0,b,r)(2,1,c,0,b,l)
-8
-total=2621,notmin=441,exceeds=1982,reported=198
-total=2631,notmin=443,exceeds=1990,reported=198
-total=2643,notmin=446,exceeds=1998,reported=199
-total=2653,notmin=448,exceeds=2006,reported=199
-total=2666,notmin=454,exceeds=2012,reported=200
-total=2679,notmin=458,exceeds=2020,reported=201
-total=2689,notmin=460,exceeds=2028,reported=201
-total=2701,notmin=465,exceeds=2033,reported=203
-total=2711,notmin=469,exceeds=2039,reported=203
-total=2715,notmin=473,exceeds=2039,reported=203
-total=2731,notmin=483,exceeds=2043,reported=205
-total=2746,notmin=485,exceeds=2055,reported=206
-total=2759,notmin=487,exceeds=2066,reported=206
-total=2773,notmin=494,exceeds=2072,reported=207
-total=2787,notmin=495,exceeds=2081,reported=211
-total=2797,notmin=496,exceeds=2090,reported=211
-total=2809,notmin=498,exceeds=2099,reported=212
-total=2819,notmin=499,exceeds=2108,reported=212
-total=2833,notmin=502,exceeds=2117,reported=214
-total=2843,notmin=503,exceeds=2126,reported=214
-total=2856,notmin=506,exceeds=2135,reported=215
-total=2866,notmin=507,exceeds=2144,reported=215
-total=2878,notmin=508,exceeds=2152,reported=218
-total=2887,notmin=509,exceeds=2160,reported=218
-total=2898,notmin=511,exceeds=2168,reported=219
-total=2907,notmin=512,exceeds=2176,reported=219
-total=2917,notmin=518,exceeds=2179,reported=220
-total=2926,notmin=519,exceeds=2185,reported=222
-total=2932,notmin=519,exceeds=2191,reported=222
-total=2938,notmin=519,exceeds=2196,reported=223
-total=2938,notmin=519,exceeds=2196,reported=223
-total=2952,notmin=523,exceeds=2202,reported=227
-total=2962,notmin=525,exceeds=2210,reported=227
-total=2972,notmin=527,exceeds=2217,reported=228
-(0,1,b,0,c,l)(1,0,c,0,b,l)(1,2,c,0,c,l)(2,0,c,0,b,l)(2,0,c,0,b,r)(2,1,c,0,c,l)
-9
-total=2984,notmin=531,exceeds=2221,reported=232
-total=2992,notmin=533,exceeds=2227,reported=232
-total=3002,notmin=534,exceeds=2235,reported=233
-total=3010,notmin=534,exceeds=2243,reported=233
-total=3022,notmin=536,exceeds=2251,reported=235
-total=3030,notmin=536,exceeds=2259,reported=235
-total=3041,notmin=538,exceeds=2267,reported=236
-total=3049,notmin=538,exceeds=2275,reported=236
-total=3059,notmin=539,exceeds=2282,reported=238
-total=3068,notmin=540,exceeds=2289,reported=239
-total=3075,notmin=540,exceeds=2296,reported=239
-total=3083,notmin=544,exceeds=2298,reported=241
-total=3089,notmin=544,exceeds=2304,reported=241
-total=3095,notmin=544,exceeds=2309,reported=242
-total=3095,notmin=544,exceeds=2309,reported=242
-total=3107,notmin=547,exceeds=2317,reported=243
-total=3117,notmin=551,exceeds=2322,reported=244
-total=3130,notmin=554,exceeds=2329,reported=247
-total=3138,notmin=555,exceeds=2336,reported=247
-total=3150,notmin=561,exceeds=2340,reported=249
-total=3158,notmin=563,exceeds=2346,reported=249
-total=3169,notmin=565,exceeds=2354,reported=250
-total=3177,notmin=565,exceeds=2362,reported=250
-total=3187,notmin=567,exceeds=2368,reported=252
-total=3195,notmin=569,exceeds=2374,reported=252
-total=3203,notmin=574,exceeds=2376,reported=253
-total=3209,notmin=575,exceeds=2380,reported=254
-total=3209,notmin=575,exceeds=2380,reported=254
-total=3225,notmin=583,exceeds=2386,reported=256
-total=3239,notmin=586,exceeds=2395,reported=258
-total=3250,notmin=588,exceeds=2404,reported=258
-total=3261,notmin=590,exceeds=2412,reported=259
-total=3273,notmin=596,exceeds=2415,reported=262
-total=3282,notmin=600,exceeds=2420,reported=262
-total=3293,notmin=602,exceeds=2428,reported=263
-total=3302,notmin=603,exceeds=2436,reported=263
-total=3312,notmin=606,exceeds=2442,reported=264
-total=3320,notmin=612,exceeds=2443,reported=265
-total=3320,notmin=612,exceeds=2443,reported=265
-total=3332,notmin=618,exceeds=2447,reported=267
-total=3343,notmin=623,exceeds=2450,reported=270
-total=3350,notmin=625,exceeds=2455,reported=270
-total=3359,notmin=627,exceeds=2461,reported=271
-total=3366,notmin=628,exceeds=2467,reported=271
-total=3374,notmin=631,exceeds=2471,reported=272
-total=3380,notmin=635,exceeds=2472,reported=273
-total=3380,notmin=635,exceeds=2472,reported=273
-(0,1,c,0,c,l)(1,0,c,0,c,l)(1,2,c,0,c,l)(2,0,c,0,c,l)(2,0,c,0,c,r)(2,1,c,0,c,l)
-10
-total=3392,notmin=639,exceeds=2474,reported=279
-total=3398,notmin=639,exceeds=2480,reported=279
-total=3405,notmin=640,exceeds=2486,reported=279
-total=3414,notmin=644,exceeds=2490,reported=280
-total=3423,notmin=648,exceeds=2494,reported=281
-total=3429,notmin=648,exceeds=2500,reported=281
-total=3437,notmin=651,exceeds=2503,reported=283
-total=3443,notmin=653,exceeds=2507,reported=283
-total=3445,notmin=655,exceeds=2507,reported=283
-total=3455,notmin=661,exceeds=2509,reported=285
-total=3464,notmin=663,exceeds=2515,reported=286
-total=3471,notmin=665,exceeds=2520,reported=286
-total=3479,notmin=670,exceeds=2522,reported=287
-total=3485,notmin=674,exceeds=2523,reported=288
-total=3486,notmin=675,exceeds=2523,reported=288
+Load Time : 0.166075 seconds
+../src/basic/../gSpan/../basic/Worker.h(329) rank#0:Enter Preprocess
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,a> occurs 0 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,b> occurs 2 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,c> occurs 2 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,d> occurs 0 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,a> occurs 0 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,b> occurs 0 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,c> occurs 2 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,d> occurs 0 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,a> occurs 0 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,b> occurs 0 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,c> occurs 1 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,d> occurs 2 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,a> occurs 1 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,b> occurs 2 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,c> occurs 2 times
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,d> occurs 0 times
+../src/basic/../gSpan/../basic/Worker.h(406) rank#0:Leave Preprocess
+../src/basic/../gSpan/../basic/Worker.h(575) rank#0:loop start
+../src/basic/../gSpan/gspanImpl.h(901):Call parameter:
+  (_minsup=2,_maxpat_min=1,_maxpat_max=2,_enc=0,_where=0,_directed=1)
+../src/basic/../gSpan/gspanImpl.h(371) rank#0:mine()
+supVector:2 2 
+Superstep 1 done. Time elapsed: 0.000211 seconds
+#msgs: 17, #vadd: 0
+--------------------------------SuperStep 1 end------------------------------------
+supVector:2 2 
+Superstep 2 done. Time elapsed: 0.000184059 seconds
+#msgs: 0, #vadd: 0
+--------------------------------SuperStep 2 end------------------------------------
+
+====================leave loopsim======================
+0.000001 0.000479 0.000001 0.000479 (exceeds,ismin,supp,suppY,suppV)=(1,1,1,0,2)
+t # 0 * 2
+v 0 a
+v 1 b
+e 0 1 0
+
+
+../src/basic/../gSpan/gspanImpl.h(371) rank#0:mine()
+supVector:2 3 
+Superstep 4 done. Time elapsed: 1.90735e-05 seconds
+#msgs: 17, #vadd: 0
+--------------------------------SuperStep 4 end------------------------------------
+supVector:2 3 
+Superstep 5 done. Time elapsed: 7.86781e-06 seconds
+#msgs: 0, #vadd: 0
+--------------------------------SuperStep 5 end------------------------------------
+
+====================leave loopsim======================
+0.000059 0.000054 0.000060 0.000533 (exceeds,ismin,supp,suppY,suppV)=(7,2,2,1,2)
+t # 1 * 2
+v 0 a
+v 1 c
+e 0 1 0
+
+
+../src/basic/../gSpan/gspanImpl.h(371) rank#0:mine()
+supVector:2 3 
+Superstep 7 done. Time elapsed: 1.50204e-05 seconds
+#msgs: 17, #vadd: 0
+--------------------------------SuperStep 7 end------------------------------------
+supVector:2 3 
+Superstep 8 done. Time elapsed: 8.10623e-06 seconds
+#msgs: 0, #vadd: 0
+--------------------------------SuperStep 8 end------------------------------------
+
+====================leave loopsim======================
+0.000038 0.000048 0.000098 0.000581 (exceeds,ismin,supp,suppY,suppV)=(13,3,3,2,2)
+t # 2 * 2
+v 0 b
+v 1 c
+e 0 1 0
+
+
+../src/basic/../gSpan/gspanImpl.h(371) rank#0:mine()
+supVector:3 2 
+Superstep 10 done. Time elapsed: 1.50204e-05 seconds
+#msgs: 17, #vadd: 0
+--------------------------------SuperStep 10 end------------------------------------
+supVector:2 2 
+Superstep 11 done. Time elapsed: 7.86781e-06 seconds
+#msgs: 2, #vadd: 0
+--------------------------------SuperStep 11 end------------------------------------
+supVector:2 2 
+Superstep 12 done. Time elapsed: 5.96046e-06 seconds
+#msgs: 0, #vadd: 0
+--------------------------------SuperStep 12 end------------------------------------
+
+====================leave loopsim======================
+0.000036 0.000062 0.000134 0.000643 (exceeds,ismin,supp,suppY,suppV)=(19,4,4,3,2)
+t # 3 * 2
+v 0 c
+v 1 d
+e 0 1 0
+
+
+../src/basic/../gSpan/gspanImpl.h(371) rank#0:mine()
+supVector:3 2 
+Superstep 14 done. Time elapsed: 3.00407e-05 seconds
+#msgs: 17, #vadd: 0
+--------------------------------SuperStep 14 end------------------------------------
+supVector:2 2 
+Superstep 15 done. Time elapsed: 8.10623e-06 seconds
+#msgs: 2, #vadd: 0
+--------------------------------SuperStep 15 end------------------------------------
+supVector:2 2 
+Superstep 16 done. Time elapsed: 5.96046e-06 seconds
+#msgs: 0, #vadd: 0
+--------------------------------SuperStep 16 end------------------------------------
+
+====================leave loopsim======================
+0.000048 0.000078 0.000182 0.000721 (exceeds,ismin,supp,suppY,suppV)=(20,5,5,4,2)
+t # 4 * 2
+v 0 c
+v 1 d
+e 0 1 0
+e 1 0 0
+
+
+../src/basic/../gSpan/gspanImpl.h(371) rank#0:mine()
+supVector:2 2 
+Superstep 18 done. Time elapsed: 1.78814e-05 seconds
+#msgs: 17, #vadd: 0
+--------------------------------SuperStep 18 end------------------------------------
+supVector:2 2 
+Superstep 19 done. Time elapsed: 6.91414e-06 seconds
+#msgs: 0, #vadd: 0
+--------------------------------SuperStep 19 end------------------------------------
+
+====================leave loopsim======================
+0.000041 0.000050 0.000223 0.000771 (exceeds,ismin,supp,suppY,suppV)=(29,6,6,5,2)
+t # 5 * 2
+v 0 b
+v 1 d
+e 1 0 0
+
+
+../src/basic/../gSpan/gspanImpl.h(371) rank#0:mine()
+supVector:3 2 
+Superstep 21 done. Time elapsed: 1.50204e-05 seconds
+#msgs: 17, #vadd: 0
+--------------------------------SuperStep 21 end------------------------------------
+supVector:3 2 
+Superstep 22 done. Time elapsed: 7.86781e-06 seconds
+#msgs: 0, #vadd: 0
+--------------------------------SuperStep 22 end------------------------------------
+
+====================leave loopsim======================
+0.000029 0.000047 0.000252 0.000818 (exceeds,ismin,supp,suppY,suppV)=(34,7,7,6,2)
+t # 6 * 2
+v 0 c
+v 1 d
+e 1 0 0
+
+
+
+====================leave loopsim======================
+../src/basic/../gSpan/../basic/Worker.h(588) rank#0:loop end
+Communication Time : 0.000185 seconds
+- Serialization Time : 0.000026 seconds
+- Transfer Time : 0.000150 seconds
+Total Computational Time : 0.001330 seconds
+Total gspan time : 0.000300 seconds
+Total #msgs=123, Total #vadd=0
+total #supersteps=24
+Dump Time : 0.170103 seconds

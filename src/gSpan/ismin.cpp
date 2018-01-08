@@ -48,11 +48,6 @@ bool gSpan::is_min() {
 
 	DFS_CODE.toGraph(GRAPH_IS_MIN);
 	DFS_CODE_IS_MIN.clear();
-#ifdef DEBUG1
-//	TRACE("report graph_is_min\n");
-//	GRAPH_IS_MIN.write(std::cout);
-//	TRACE("report graph_is_min end\n");
-#endif
 #ifdef DIRECTED
 	Projected_map4 root4;
 	//Projected_map3 root; // (fromVlabel, elabel, toVlabel) ==> Edge e
@@ -172,27 +167,16 @@ bool gSpan::project_is_min(Projected &projected) {
 //			assert(elabel->second.size()==1);
 #ifdef DIRECTED
 
-#ifdef DEBUG3
-			DFS_CODE_IS_MIN.push(maxtoc, newto,-1, elabel->first,-1, src->first);
-#else
 			DFS_CODE_IS_MIN.push(maxtoc, newto,
 					DFS_CODE_IS_MIN[rmpath[0]].tolabel, elabel->first,
 					newtolabel, src->first);
-#endif
 
 #else
 			DFS_CODE_IS_MIN.push(maxtoc, newto, -1, elabel->first, -1);
 #endif
+
 			if (DFS_CODE[DFS_CODE_IS_MIN.size() - 1]
 					!= DFS_CODE_IS_MIN[DFS_CODE_IS_MIN.size() - 1]) {
-#ifdef DEBUG1
-				TRACE("not min after adding backward edge, Report\n");
-				printf("dfs_min:");
-				outputdfscode(DFS_CODE_IS_MIN);
-				printf("dfs    :");
-				outputdfscode(DFS_CODE);
-				TRACE("not min after adding backward edge, Report End\n");
-#endif
 				return false;
 			}
 			return project_is_min(src->second);
@@ -317,24 +301,11 @@ bool gSpan::project_is_min(Projected &projected) {
 			Projected_iterator2 tolabel = elabel->second.begin();
 			Projected_iterator1 src = tolabel->second.begin();
 
-#ifdef DEBUG3
-			DFS_CODE_IS_MIN.push(newfrom, maxtoc + 1, -1, elabel->first,
-					tolabel->first, src->first);
-#else
 			DFS_CODE_IS_MIN.push(newfrom, maxtoc + 1, newfromlabel,
 					elabel->first, tolabel->first, src->first);
-#endif
 
 			if (DFS_CODE[DFS_CODE_IS_MIN.size() - 1]
 					!= DFS_CODE_IS_MIN[DFS_CODE_IS_MIN.size() - 1]) {
-#ifdef DEBUG1
-				TRACE("not min after adding forward edge, Report\n");
-				printf("dfs_min:");
-				outputdfscode(DFS_CODE_IS_MIN);
-				printf("dfs    :");
-				outputdfscode(DFS_CODE);
-				TRACE("not min after adding forward edge, Report End\n");
-#endif
 				return false;
 			}
 			return project_is_min(src->second);

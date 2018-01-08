@@ -1,0 +1,34 @@
+CCOMPILE=mpic++
+PLATFORM=Linux-amd64-64
+CPPFLAGS= -I$(HADOOP_HOME)/src/c++/libhdfs -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux 
+LIB = -L$(HADOOP_HOME)/c++/$(PLATFORM)/lib
+LDFLAGS = -lhdfs -Wno-deprecated -O2
+
+deps = $(wildcard gSpan/*.h basic/*.h utils/*.h) pregelplus_similation_do.h
+src = $(wildcard gSpan/*.cpp)
+obj = $(src:%.cpp=%.o) run.o
+
+
+
+all: run
+
+gSpan/%.o: gSpan/%.cpp gSapn/gspan.h
+	$(CCOMPILE) -c $< -o $@
+
+run.o: $(deps) run.cpp
+	$(CCOMPILE) -c run.cpp  $(CPPFLAGS)   -o $@
+
+run: $(obj)
+	$(CCOMPILE) $(obj) $(LIB) $(LDFLAGS) -o $@
+
+#run:
+#	@echo $(deps)
+#	@echo $(src)
+#	@echo $(obj)
+
+clean:
+	-rm run
+	-rm *.o
+	-rm gSpan/*.o
+
+	

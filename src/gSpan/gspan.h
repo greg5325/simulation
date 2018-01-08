@@ -29,14 +29,29 @@
 #include <assert.h>
 
 //#define TRACE (printf("%s(%d)<%s>:\t",__FILE__, __LINE__, __FUNCTION__), printf)
-#define TRACE (printf("%s(%d):\t",__FILE__, __LINE__), printf)
+#define TRACE (printf("%s(%d):",__FILE__, __LINE__), printf)
+#define ST (printf("%s(%d) rank#%d:",__FILE__,__LINE__,_my_rank),printf)
+//#define ST (printf("%s(%d) rank#%d:",__FILE__, __LINE__,_my_rank),printf)
+
+/*
+ * macro DIRECTED is used to decide if the edge is directed in the gspan code
+ */
 #define DIRECTED 1
+
+/*
+ * macro SIMULATION defines the whole project is a distributed mining project, if the Simulation is
+ * not defined, the project would degrade downto a gSpan project
+ *
+ */
 #define SIMULATION 1
-#ifdef DIRECTED
-//#define DEBUG1
-#define DEBUG2
-//#define DEBUG3
-#endif
+
+/*
+ *the macro little defines if the code is run on the cluster or on the development environment
+ */
+#define little 1
+
+
+
 
 #define maxx(a,b)    (((a) > (b)) ? (a) : (b))
 #define minn(a,b)    (((a) < (b)) ? (a) : (b))

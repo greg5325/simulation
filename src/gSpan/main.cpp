@@ -40,11 +40,7 @@ void usage(void) {
 	std::cout << std::endl;
 }
 #ifdef SIMULATION
-#ifdef DEBUG2
-int main(int argc, char **argv) {
-#else
 	int main1(int argc, char **argv) {
-#endif
 #else
 	int main(int argc, char **argv) {
 #endif

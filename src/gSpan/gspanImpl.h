@@ -19,6 +19,8 @@
  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  02111-1307, USA
  */
+
+
 //#include "gspan.h"
 #include "../basic/Worker.h"
 #include <iterator>
@@ -31,10 +33,16 @@ namespace GSPAN {
 gSpan::gSpan(void) {
 
 #ifdef SIMULATION
+#ifdef little
 	labelset.push_back('a');
 	labelset.push_back('b');
 	labelset.push_back('c');
-//	labelset.push_back('d');
+	labelset.push_back('d');
+#else
+	for (char i = 1; i <= 100; i++)
+		labelset.push_back(i);
+#endif
+	labelsetsize = labelset.size();
 #endif
 }
 void gSpan::outputmp4(Projected_map4 mp, std::string prefix, std::string suffix,
@@ -80,8 +88,13 @@ void gSpan::outputProjected(Projected match, std::string prefix,
 
 void gSpan::outputdfscode(DFSCode &code) {
 	for (DFSCode::iterator it = code.begin(); it != code.end(); ++it) {
+#ifdef little
 		printf("(%d,%d,%c,%d,%c,%c)", it->from, it->to, it->fromlabel,
 				it->elabel, it->tolabel, it->src);
+#else
+		printf("(%d,%d,%d,%d,%d,%c)", it->from, it->to, it->fromlabel,
+				it->elabel, it->tolabel, it->src);
+#endif
 	}
 	printf("\n");
 }
@@ -153,7 +166,8 @@ void gSpan::report_single(Graph &g, unsigned int sup) {
 #endif
 
 void gSpan::report(Projected &projected, unsigned int sup) {
-	/* Filter to small/too large graphs.
+
+	/* Filter too small/too large graphs.
 	 */
 	if (maxpat_max > maxpat_min && DFS_CODE.nodeCount() > maxpat_max)
 		return;
@@ -215,100 +229,113 @@ void gSpan::report(Projected &projected, unsigned int sup) {
  */
 #ifdef SIMULATION
 void gSpan::project(Projected &projected) {
+
+	static int ismintestcount = 0, exceedstestcount = 0, supptestcount = 0,
+			supppasscount = 0;
 	assert(projected.size()==1);
-#ifdef DEBUG2
-	static int total, notmin, exceeds, reported;
-	total++;
-	/*
-	 * before optimization: total = 198, notmin = 84, exceeds = 99, reported = 15
-	 */
-#endif
-#ifdef DEBUG1
-	printf("====================================================================\n");
-	static int total,notmin,exceeds,reported;
-	total++;
-	/*
-	 * before optimization: total = 198, notmin = 84, exceeds = 99, reported = 15
-	 */
-	printf("total=%d,notmin=%d,exceeds=%d,reported=%d\n",total,notmin,exceeds,reported);
-	TRACE("Report dfs_code\n");
-	outputdfscode(DFS_CODE);
-	TRACE("Report dfs_code end\n\n");
-#endif
-	/* The minimal DFS code check is more expensive than the support check,
-	 * hence it is done now, after checking the support.
-	 *
-	 * the inverse occasion in distributed graph simulation, support count is more expensive!
-	 */
-	if (is_min() == false) {
-		//      *os  << "NOT MIN [";  DFS_CODE.write (*os);  *os << "]" << std::endl;
-#ifdef DEBUG2
-		notmin++;
-//		TRACE("not a min DFS_CODE, Report Code\n");
-//		outputdfscode(DFS_CODE);
-//		TRACE("not a min DFS_CODE, Report Code End\n");
-#endif
-#ifdef DEBUG1
-		notmin++;
-		TRACE("not a min DFS_CODE, Report Code\n");
-		outputdfscode(DFS_CODE);
-		TRACE("not a min DFS_CODE, Report Code End\n");
-#endif
-		return;
+
+	//filter if new added edge below frequent
+	DFS& dfstmp = DFS_CODE.back();
+	if (dfstmp.src == 'l') {
+		if (edgeFrequent[dfstmp.fromlabel][dfstmp.tolabel] < minsup){
+			return;
+		}
+	} else if (dfstmp.src == 'r') {
+//		if(dfstmp.from==30&&dfstmp.tolabel)
+		if (edgeFrequent[dfstmp.tolabel][dfstmp.fromlabel] < minsup){
+			return;
+		}
+	} else {
+		assert(false);
 	}
 
-#ifdef DEBUG2
-	static bool filtereddebug2 = false;
-#endif
 	/* Check if the pattern is frequent enough.
 	 *
 	 * TODO: here we need to invoke the simulation algorithm to calculate the support value!
 	 */
-	unsigned int sup = 2;
-	if (sup < minsup) {
-		return;
-	}
-
+//	unsigned int sup = 2;
+//	if (sup < minsup) {
+//		return;
+//	}
 	/* In case we have a valid upper bound and our graph already exceeds it,
 	 * return.  Note: we do not check for equality as the DFS exploration may
 	 * still add edges within an existing subgraph, without increasing the
 	 * number of nodes.
 	 */
+	exceedstestcount++;
 	if (maxpat_max > maxpat_min && DFS_CODE.nodeCount() > maxpat_max) {
-#ifdef DEBUG2
-		exceeds++;
-#endif
-#ifdef DEBUG1
-		exceeds++;
-		TRACE("exceed nodes limit\n");
-#endif
 		return;
 	}
-#ifdef DEBUG2
-	reported++;
-	static int sixedge = 0; //occassion 9
-	if (DFS_CODE.size() == 6) {
-		outputdfscode(DFS_CODE);
-		sixedge++;
-		printf("%d\n", sixedge);
+	/* The minimal DFS code check is more expensive than the support check,
+	 * hence it is done now, after checking the support.
+	 *
+	 * the inverse occasion in distributed graph simulation, support count is more expensive!
+	 */
+	ismintestcount++;
+	if (is_min() == false) {
+		//      *os  << "NOT MIN [";  DFS_CODE.write (*os);  *os << "]" << std::endl;
+		return;
 	}
 
-#endif
-#ifdef DEBUG1
-	reported++;
-#endif
-#ifndef DEBUG2
+
+#ifndef SIMULATION
 	report(projected, sup);
 #else
-	if (filtereddebug2) {
-		printf("total=%d,notmin=%d,exceeds=%d,reported=%d", total, notmin,
-				exceeds, reported);
-		TRACE("Report dfs_code\n");
-		outputdfscode(DFS_CODE);
-		TRACE("Report dfs_code end\n\n");
-		report(projected, sup);
+	supptestcount++;
+	static int reported = 0;
+	reported++;
+	gspanMsg.size = DFS_CODE.size();
+	DFS &dfs = DFS_CODE[DFS_CODE.size() - 1];
+	if (dfs.src == 'l') {
+		gspanMsg.fromid = dfs.from;
+		gspanMsg.fromlabel = dfs.fromlabel;
+		gspanMsg.toid = dfs.to;
+		gspanMsg.tolabel = dfs.tolabel;
+	} else if (dfs.src == 'r') {
+		gspanMsg.fromid = dfs.to;
+		gspanMsg.fromlabel = dfs.tolabel;
+		gspanMsg.toid = dfs.from;
+		gspanMsg.tolabel = dfs.fromlabel;
+	} else
+		assert(false);
+
+	static double gspanstarttime = get_current_time();
+	static double gspanstoptime = 0;
+	static double gspanacctime = 0;
+	static double simstarttime = 0;
+	static double simstoptime = 0;
+	static double simacctime = 0;
+
+	gspanstoptime = get_current_time();
+
+	simstarttime = gspanstoptime;
+
+	StopTimer(GSPAN_TIMER);
+
+	mine();
+	StartTimer(GSPAN_TIMER);
+
+	simstoptime = get_current_time();
+	gspanacctime += gspanstoptime - gspanstarttime;
+	simacctime += simstoptime - simstarttime;
+
+	printf("%f %f %f %f (exceeds,ismin,supp,suppY,suppV)=(%d,%d,%d,%d,%d)\n",
+			gspanstoptime - gspanstarttime, simstoptime - simstarttime,
+			gspanacctime, simacctime, exceedstestcount, ismintestcount,
+			supptestcount, supppasscount, curSupp());
+
+	gspanstarttime = simstoptime;
+
+	int supp = curSupp();
+
+
+	if (supp < minsup) {
+		return;
 	}
+	supppasscount++;
+	report(projected, supp);
 #endif
+
 
 	/* We just outputted a frequent subgraph.  As it is frequent enough, so
 	 * might be its (n+1)-extension-graphs, hence we enumerate them all.
@@ -316,17 +343,6 @@ void gSpan::project(Projected &projected) {
 	const RMPath rmpath = DFS_CODE.buildRMPath(); //build by backward traverse.
 	int minlabel = DFS_CODE[0].fromlabel; //root vertex label, minlabel of dfscode
 	int maxtoc = DFS_CODE[rmpath[0]].to; //max vertexID of dfs code.
-#ifdef DEBUG2
-////	assert(rmpath[rmpath.size()-1]==0);
-//	if(rmpath[rmpath.size()-1]!=0){
-//		printf("=========================error===========================");
-//		outputdfscode(DFS_CODE);
-//		for(vector<int>::const_iterator it=rmpath.begin();it!=rmpath.end();++it){
-//			printf(" %d ",*it);
-//		}
-//		printf("\n");
-//	}
-#endif
 
 	//===========================backward======================================
 	for (int i = (rmpath.size() - 1); i >= 0; --i) {
@@ -354,13 +370,10 @@ void gSpan::project(Projected &projected) {
 			if (DFS_CODE[rmpath[i]].tolabel > DFS_CODE[rmpath[0]].tolabel)
 				continue;
 
-#ifdef DEBUG3
-			DFS_CODE.push(to, from, -1, 0,
-					-1, 'l');
-#else
+
 			DFS_CODE.push(to, from, DFS_CODE[rmpath[0]].tolabel, 0,
 					DFS_CODE[rmpath[i]].fromlabel, 'l');
-#endif
+
 			currentGraph[to].push(to, from, 0);
 
 			p.push(0, 0, &projected[0]);
@@ -387,13 +400,10 @@ void gSpan::project(Projected &projected) {
 			if (DFS_CODE[rmpath[i]].tolabel == DFS_CODE[rmpath[0]].tolabel
 					&& DFS_CODE[rmpath[i]].src == 'r')
 				continue;
-#ifdef DEBUG3
-			DFS_CODE.push(to, from, -1, 0,
-					-1, 'r');
-#else
+
 			DFS_CODE.push(to, from, DFS_CODE[rmpath[0]].tolabel, 0,
 					DFS_CODE[rmpath[i]].fromlabel, 'r');
-#endif
+
 			currentGraph[from].push(from, to, 0);
 
 			p.clear();
@@ -412,13 +422,10 @@ void gSpan::project(Projected &projected) {
 		currentGraph[maxtoc + 1].label = labelset[i];
 
 		Projected p;
-#ifdef DEBUG3
-		DFS_CODE.push(maxtoc, maxtoc + 1, -1, 0,
-				labelset[i], 'l');
-#else
+
 		DFS_CODE.push(maxtoc, maxtoc + 1, DFS_CODE[rmpath[0]].tolabel, 0,
 				labelset[i], 'l');
-#endif
+
 		currentGraph[maxtoc].push(maxtoc, maxtoc + 1, 0);
 
 		p.push(0, 0, &projected[0]);
@@ -427,13 +434,9 @@ void gSpan::project(Projected &projected) {
 		currentGraph[maxtoc].pop();
 		DFS_CODE.pop();
 		//-------------------------------------------------------------
-#ifdef DEBUG3
-		DFS_CODE.push(maxtoc, maxtoc + 1, -1, 0,
-				labelset[i], 'r');
-#else
+
 		DFS_CODE.push(maxtoc, maxtoc + 1, DFS_CODE[rmpath[0]].tolabel, 0,
 				labelset[i], 'r');
-#endif
 
 		currentGraph[maxtoc + 1].push(maxtoc + 1, maxtoc, 0);
 
@@ -453,36 +456,16 @@ void gSpan::project(Projected &projected) {
 			if (labelset[j] < minlabel)
 				continue;
 
-#ifndef DEBUG2
-
-			if(DFS_CODE[rmpath[i]].tolabel>labelset[j])
-			continue;
-#else
-			filtereddebug2 = false;
-			if (DFS_CODE[rmpath[i]].tolabel > labelset[j]) {
-				filtereddebug2 = true;
-//				TRACE("%d, %d\n",DFS_CODE[rmpath[i]].tolabel,labelset[j]);
-//				printf("dfscodesize=%d,(%d,%d)(%c,%c)\n",DFS_CODE.size(), DFS_CODE[rmpath[i]].tolabel,
-//						labelset[j], DFS_CODE[rmpath[i]].tolabel, labelset[j]);
-//				printf("i=%d,rmpath[i]=%d ",i,rmpath[i]);
-//				continue;
-//				for(vector<int>::const_iterator it=rmpath.begin();it!=rmpath.end();++it){
-//					printf(" %d ",*it);
-//				}
+			if (DFS_CODE[rmpath[i]].tolabel > labelset[j])
 				continue;
-			}
-//			if(filtereddebug2)outputdfscode(DFS_CODE);
-#endif
+
 			Projected p;
 			if (DFS_CODE[rmpath[i]].tolabel < labelset[j]
 					|| DFS_CODE[rmpath[i]].src == 'l') {
-#ifdef DEBUG3
-				DFS_CODE.push(from, maxtoc + 1, -1,
-						0, labelset[j], 'l');
-#else
+
 				DFS_CODE.push(from, maxtoc + 1, DFS_CODE[rmpath[i]].fromlabel,
 						0, labelset[j], 'l');
-#endif
+
 				currentGraph[from].push(from, maxtoc + 1, 0);
 				p.push(0, 0, &projected[0]);
 				project(p);
@@ -490,13 +473,9 @@ void gSpan::project(Projected &projected) {
 				currentGraph[from].pop();
 				DFS_CODE.pop();
 			}
-#ifdef DEBUG3
-			DFS_CODE.push(from, maxtoc + 1, -1, 0,
-					labelset[j], 'r');
-#else
+
 			DFS_CODE.push(from, maxtoc + 1, DFS_CODE[rmpath[i]].fromlabel, 0,
 					labelset[j], 'r');
-#endif
 
 			currentGraph[maxtoc + 1].push(maxtoc + 1, from, 0);
 
@@ -506,42 +485,21 @@ void gSpan::project(Projected &projected) {
 
 			currentGraph[maxtoc + 1].pop();
 			DFS_CODE.pop();
-#ifdef DEBUG2
-			if (filtereddebug2)
-				filtereddebug2 = false;
-#endif
 		}
 	}
 	currentGraph.resize(maxtoc + 1);
 	assert(currentGraph.size()==(maxtoc+1));
-#ifdef DEBUG2
-	printf("total=%d,notmin=%d,exceeds=%d,reported=%d\n", total, notmin,
-			exceeds, reported);
-#endif
-#ifdef DEBUG1
-	printf("total=%d,notmin=%d,exceeds=%d,reported=%d",total,notmin,exceeds,reported);
-#else
-#endif
 	return;
 }
 #else
 
 void gSpan::project(Projected &projected) {
 
-#ifdef DEBUG1
-	printf(
-			"====================================================================\n");
-	TRACE("Report dfs_code\n");
-	outputdfscode(DFS_CODE);
-	TRACE("Report dfs_code\n\n");
-#endif
+
 	/* Check if the pattern is frequent enough.
 	 */
 	unsigned int sup = support(projected);
 	if (sup < minsup) {
-#ifdef DEBUG1
-		TRACE("sup is less than minsup\n");
-#endif
 		return;
 	}
 
@@ -550,11 +508,6 @@ void gSpan::project(Projected &projected) {
 	 */
 	if (is_min() == false) {
 		//      *os  << "NOT MIN [";  DFS_CODE.write (*os);  *os << "]" << std::endl;
-#ifdef DEBUG1
-		TRACE("not a min DFS_CODE, Report Code\n");
-		outputdfscode(DFS_CODE);
-		TRACE("not a min DFS_CODE, Report Code End\n");
-#endif
 		return;
 	}
 
@@ -567,9 +520,6 @@ void gSpan::project(Projected &projected) {
 	 * number of nodes.
 	 */
 	if (maxpat_max > maxpat_min && DFS_CODE.nodeCount() > maxpat_max) {
-#ifdef DEBUG1
-		TRACE("exceed nodes limit\n");
-#endif
 		return;
 	}
 
@@ -709,14 +659,6 @@ void gSpan::project(Projected &projected) {
 #endif
 	}
 
-#ifdef DEBUG1
-	TRACE("Report extend\n");
-	*os << "backward\n";
-	outputmp3(new_bck_root);
-	*os << "forward \n";
-	outputmp4(new_fwd_root);
-	TRACE("Report extend end\n");
-#endif
 	/* Test all extended substructures.
 	 *
 	 *
@@ -941,12 +883,6 @@ void gSpan::run_intern(void) {
 			}
 		}
 	}
-#ifdef DEBUG1
-	TRACE("time is %d, trasn#%d\n", 10,TRANS.size());
-	*os << "[vlabel,elabel,vlabel,src]" << std::endl;
-	outputmp4(root4);
-	*os << std::endl;
-#endif
 	/*
 	 *
 	 * for hierarchy
@@ -1022,3 +958,46 @@ void gSpan::run_intern(void) {
 #endif
 
 }
+
+
+
+
+
+/*
+ *
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,a> occurs 0 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,b> occurs 2 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,c> occurs 2 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,d> occurs 0 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,a> occurs 0 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,b> occurs 0 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,c> occurs 2 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,d> occurs 0 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,a> occurs 0 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,b> occurs 0 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,c> occurs 1 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,d> occurs 2 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,a> occurs 1 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,b> occurs 2 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,c> occurs 2 times
+
+../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,d> occurs 0 times
+
+
+
+
+ */

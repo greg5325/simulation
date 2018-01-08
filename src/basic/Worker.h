@@ -2,6 +2,7 @@
 #define WORKER_H
 
 #include <vector>
+#include <map>
 #include "../utils/global.h"
 #include "MessageBuffer.h"
 #include <string>
@@ -11,7 +12,90 @@
 #include "../utils/Aggregator.h"
 #include "../gSpan/gspan.h"
 using namespace std;
+//------------------------------------------------------------------------------------------------------------------------------------
+enum Phase {
+	preprocessing = 1, normalcomputing = 2
+};
+Phase phase = preprocessing;
+//=================preprocessing=====================
+map<int, map<int, int> > edgeFrequent;
+int preprocessSuperstep = 0;
+int labelsetsize = 0;
+int minsup = 0;
+//=================Query graph=========================
+struct Query_Graph {
+	vector<char> labels;
+	vector<vector<VertexID> > queryVertexToEdges;
+};
 
+struct Simmsg {
+	int size;
+	int fromid;
+	char fromlabel;
+	int toid;
+	char tolabel;
+};
+
+ibinstream & operator<<(ibinstream & m, const Simmsg & msg) {
+	m << msg.size << msg.fromid << msg.fromlabel << msg.toid << msg.tolabel;
+	return m;
+}
+obinstream & operator>>(obinstream & m, Simmsg & msg) {
+	m >> msg.size >> msg.fromid >> msg.fromlabel >> msg.toid >> msg.tolabel;
+	return m;
+}
+void mine();
+
+void * workercontext = 0;
+Query_Graph q;
+vector<Simmsg> edges;
+Simmsg gspanMsg;
+bool mutated = false;
+//=================support metric====================
+//vector<int> partialSupp;
+vector<vector<int> > partialSuppStack;
+int supp;
+
+void processgspanMsg() {
+	edges.resize(gspanMsg.size);
+	edges[gspanMsg.size - 1] = gspanMsg;
+	//construct graph
+	q.labels.resize(std::max(gspanMsg.fromid, gspanMsg.toid) + 1);
+	q.queryVertexToEdges.clear();
+	q.queryVertexToEdges.resize(q.labels.size());
+	for (int i = 0; i < edges.size(); ++i) {
+		Simmsg &e = edges[i];
+		q.labels[e.fromid] = e.fromlabel;
+		q.labels[e.toid] = e.tolabel;
+		q.queryVertexToEdges[e.fromid].push_back(e.toid);
+	}
+
+	//used to tell the new add vertexes.
+	if (edges.size() > 1) {
+		Simmsg &e = edges[edges.size() - 2];
+		if (gspanMsg.fromid <= std::max(e.fromid, e.toid))
+			gspanMsg.fromlabel == -1;
+		if (gspanMsg.toid <= std::max(e.fromid, e.toid))
+			gspanMsg.toid == -1;
+	}
+
+	//process partialSuppStack
+	partialSuppStack.resize(edges.size());
+	if (partialSuppStack.size() > 1) {
+		partialSuppStack[partialSuppStack.size() - 1] =
+				partialSuppStack[partialSuppStack.size() - 2];
+	}
+	partialSuppStack[partialSuppStack.size() - 1].resize(q.labels.size());
+	if (gspanMsg.fromlabel != -1)
+		partialSuppStack[partialSuppStack.size() - 1][gspanMsg.fromid] = 0;
+	if (gspanMsg.tolabel != -1)
+		partialSuppStack[partialSuppStack.size() - 1][gspanMsg.toid] = 0;
+
+}
+int curSupp() {
+	return supp;
+}
+//----------------------------------------------------------------------------------------------------------------------------------------
 template<class VertexT, class AggregatorT = DummyAgg> //user-defined VertexT
 class Worker {
 	typedef vector<VertexT*> VertexContainer;
@@ -240,6 +324,89 @@ public:
 	//user-defined graphDumper ==============================
 	virtual void toline(VertexT* v, BufferedWriter& writer) = 0; //this is what user specifies!!!!!!
 
+	void preprocess() {
+		if (get_worker_id() == MASTER_RANK)
+			ST("Enter Preprocess\n");
+		phase = preprocessing;
+
+		if (get_worker_id() == MASTER_RANK)
+			setBit(WAKE_ALL_ORBIT);
+		while (true) {
+			preprocessSuperstep++;
+			//===================
+			char bits_bor = all_bor(global_bor_bitmap);
+			if (getBit(FORCE_TERMINATE_ORBIT, bits_bor) == 1)
+				break;
+			get_vnum() = all_sum(vertexes.size());
+			int wakeAll = getBit(WAKE_ALL_ORBIT, bits_bor);
+			if (wakeAll == 0) {
+				active_vnum() = all_sum(active_count);
+				if (active_vnum() == 0
+						&& getBit(HAS_MSG_ORBIT, bits_bor) == 0) {
+					break; //all_halt AND no_msg
+				}
+			} else
+				active_vnum() = get_vnum();
+			clearBits();
+			if (wakeAll == 1) {
+				all_compute();
+			} else {
+				active_compute();
+			}
+			message_buffer->combine();
+			master_sum_LL(message_buffer->get_total_msg());
+			master_sum_LL(message_buffer->get_total_vadd());
+			vector<VertexT*>& to_add = message_buffer->sync_messages();
+			for (int i = 0; i < to_add.size(); i++)
+				add_vertex(to_add[i]);
+			to_add.clear();
+			//===================
+			worker_barrier();
+		}
+
+		int edgefrequentarray[labelsetsize * labelsetsize];
+		for (int i = 0; i < labelsetsize * labelsetsize; i++)
+			edgefrequentarray[i] = 0;
+
+		for (map<int, map<int, int> >::iterator src = edgeFrequent.begin();
+				src != edgeFrequent.end(); ++src) {
+			for (map<int, int>::iterator dst = src->second.begin();
+					dst != src->second.end(); ++dst) {
+#ifdef little
+				edgefrequentarray[(src->first-'a')*labelsetsize+dst->first-'a']=dst->second;
+#else
+				edgefrequentarray[(src->first - 1) * labelsetsize + dst->first
+						- 1] = dst->second;
+#endif
+			}
+		}
+
+		int result[labelsetsize * labelsetsize];
+		MPI_Reduce(edgefrequentarray, result, labelsetsize * labelsetsize,
+				MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		if (get_worker_id() == MASTER_RANK) {
+			for (int i = 0; i < labelsetsize; i++) {
+				for (int j = 0; j < labelsetsize; j++) {
+#ifdef little
+					ST("<%c,%c> occurs %d times\n", i+'a',j+'a',result[i*labelsetsize+j]);
+					edgeFrequent[i+'a'][j+'a'] = result[i * labelsetsize + j];
+#else
+					if (result[i * labelsetsize + j] > minsup)
+						ST("<%d,%d> occurs %d times\n", i + 1, j + 1,
+								result[i * labelsetsize + j]);
+					edgeFrequent[i + 1][j + 1] = result[i * labelsetsize + j];
+#endif
+				}
+			}
+		} else {
+			edgeFrequent.clear();
+		}
+
+		phase = normalcomputing;
+		if (get_worker_id() == MASTER_RANK)
+			ST("Leave Preprocess\n");
+	}
+
 	void dump_partition(const char* outpath) {
 		hdfsFS fs = getHdfsFS();
 		BufferedWriter* writer = new BufferedWriter(outpath, fs, _my_rank);
@@ -254,7 +421,103 @@ public:
 	//=======================================================
 
 	// run the worker
+	void looponsim() {
+		long long step_msg_num;
+		long long step_vadd_num;
+		if (get_worker_id() == MASTER_RANK)
+//			printf("\n====================enter loopsim======================\n");
+			setBit(Query_Mutated);
+		setBit(WAKE_ALL_ORBIT);
+		while (true) {
+//			worker_barrier();
+			global_step_num++;
+			ResetTimer(4);
+			//===================
+			char bits_bor = all_bor(global_bor_bitmap);
+			if (getBit(FORCE_TERMINATE_ORBIT, bits_bor) == 1)
+				break;
+
+			if (getBit(Query_Mutated, bits_bor) == 1) {
+				if (get_worker_id() == MASTER_RANK) {
+					masterBcast(gspanMsg);
+#ifdef little
+//					ST("M:(size,s,sl,d,dl)=(%d,%d,%c,%d,%c)\n", gspanMsg.size,
+//							gspanMsg.fromid, gspanMsg.fromlabel, gspanMsg.toid,
+//							gspanMsg.tolabel);
+#else
+					ST("M:(size,s,sl,d,dl)=(%d,%d,%d,%d,%d)\n", gspanMsg.size,
+							gspanMsg.fromid, gspanMsg.fromlabel, gspanMsg.toid,
+							gspanMsg.tolabel);
+#endif
+				} else {
+					slaveBcast(gspanMsg);
+//					ST("S:(size,s,sl,d,dl)=(%d,%d,%c,%d,%c)\n", gspanMsg.size,
+//							gspanMsg.fromid, gspanMsg.fromlabel, gspanMsg.toid,
+//							gspanMsg.tolabel);
+				}
+				processgspanMsg();
+				mutated = true;
+			} else {
+				mutated = false;
+			}
+
+			get_vnum() = all_sum(vertexes.size());
+			int wakeAll = getBit(WAKE_ALL_ORBIT, bits_bor);
+			if (wakeAll == 0) {
+				active_vnum() = all_sum(active_count);
+				if (active_vnum() == 0
+						&& getBit(HAS_MSG_ORBIT, bits_bor) == 0) {
+					if (get_worker_id() == MASTER_RANK)
+						break; //all_halt AND no_msg
+					else
+						continue;
+				}
+			} else
+				active_vnum() = get_vnum();
+			//===================
+			AggregatorT* agg = (AggregatorT*) get_aggregator();
+			if (agg != NULL)
+				agg->init();
+			//==============================================================================
+			clearBits();
+			if (wakeAll == 1) {
+				all_compute();
+			} else {
+				active_compute();
+			}
+			message_buffer->combine();
+			step_msg_num = master_sum_LL(message_buffer->get_total_msg());
+			step_vadd_num = master_sum_LL(message_buffer->get_total_vadd());
+			if (_my_rank == MASTER_RANK) {
+				global_msg_num += step_msg_num;
+				global_vadd_num += step_vadd_num;
+			}
+			vector<VertexT*>& to_add = message_buffer->sync_messages();
+			agg_sync();
+			for (int i = 0; i < to_add.size(); i++)
+				add_vertex(to_add[i]);
+			to_add.clear();
+			//===================
+			worker_barrier();
+			StopTimer(4);
+			if (_my_rank == MASTER_RANK) {
+				cout << "Superstep " << global_step_num
+						<< " done. Time elapsed: " << get_timer(4) << " seconds"
+						<< endl;
+				cout << "#msgs: " << step_msg_num << ", #vadd: "
+						<< step_vadd_num << endl;
+				printf(
+						"--------------------------------SuperStep %d end------------------------------------\n",
+						step_num());
+			}
+		}
+		if (get_worker_id() == MASTER_RANK)
+			printf(
+					"\n====================leave loopsim======================\n");
+	}
+
 	void run(const WorkerParams& params) {
+
 		//check path + init
 		if (_my_rank == MASTER_RANK) {
 			if (dirCheck(params.input_path.c_str(), params.output_path.c_str(),
@@ -296,105 +559,80 @@ public:
 		worker_barrier(); //@@@@@@@@@@@@@
 		StopTimer(WORKER_TIMER);
 		PrintTimer("Load Time", WORKER_TIMER);
-
-		//=========================================================
-
+		//finished loading graph.================================
 		init_timers();
 		ResetTimer(WORKER_TIMER);
 		//supersteps
 		global_step_num = 0;
-		long long step_msg_num;
-		long long step_vadd_num;
-		long long global_msg_num = 0;
-		long long global_vadd_num = 0;
+		//==============================loop start here=========================================
+		GSPAN::gSpan gspan;
+		minsup = 20000;
+		preprocess();
 
-		GSPAN::gSpan * gspan = 0;
-		if (get_worker_id() == MASTER_RANK) {
-			gspan = new GSPAN::gSpan();
-		}
-		while (true) {
-			global_step_num++;
-			ResetTimer(4);
-			//===================
-			char bits_bor = all_bor(global_bor_bitmap);
-			if (getBit(FORCE_TERMINATE_ORBIT, bits_bor) == 1)
-				break;
-			get_vnum() = all_sum(vertexes.size());
-			int wakeAll = getBit(WAKE_ALL_ORBIT, bits_bor);
-			if (wakeAll == 0) {
-				active_vnum() = all_sum(active_count);
-				if (active_vnum() == 0 && getBit(HAS_MSG_ORBIT, bits_bor) == 0)
-					break; //all_halt AND no_msg
-			} else
-				active_vnum() = get_vnum();
-			//===================
-			AggregatorT* agg = (AggregatorT*) get_aggregator();
-			if (agg != NULL)
-				agg->init();
-			//===================
-			clearBits();
-			if (wakeAll == 1) {
-				all_compute();
-			} else {
-				active_compute();
-			}
-			message_buffer->combine();
-			step_msg_num = master_sum_LL(message_buffer->get_total_msg());
-			step_vadd_num = master_sum_LL(message_buffer->get_total_vadd());
-			if (_my_rank == MASTER_RANK) {
-				global_msg_num += step_msg_num;
-				global_vadd_num += step_vadd_num;
-			}
-			vector<VertexT*>& to_add = message_buffer->sync_messages();
-			agg_sync();
-			for (int i = 0; i < to_add.size(); i++)
-				add_vertex(to_add[i]);
-			to_add.clear();
-			//===================
-			worker_barrier();
-			StopTimer(4);
-			if (_my_rank == MASTER_RANK) {
-#ifdef DEBUG2
-				TRACE("Master Report\n");
+		if (get_worker_id() != MASTER_RANK) {
+			looponsim();
+		} else {
+
+			ST("loop start\n");
+			StartTimer(GSPAN_TIMER);
+#ifdef little
+			gspan.run(2, 1, 2, false, false, true);
+#else
+			gspan.run(minsup, 1, 6, false, false, true);
+
 #endif
-				cout << "Superstep " << global_step_num
-						<< " done. Time elapsed: " << get_timer(4) << " seconds"
-						<< endl;
-				cout << "#msgs: " << step_msg_num << ", #vadd: "
-						<< step_vadd_num << endl;
-#ifdef DEBUG2
-				TRACE("Master Report End\n");
-#endif
-				printf(
-						"--------------------------------------%d------------------------------------\n",
-						step_num());
-//                cout <<"--------------------------------------------------------------------------"<<endl;
-			}
+			StopTimer(GSPAN_TIMER);
+//			test();
+//			terminate = true;
+			setBit(FORCE_TERMINATE_ORBIT);
+			looponsim();
+			ST("loop end\n");
+
 		}
+		//==============================loop end here===========================================
 		worker_barrier();
 		StopTimer(WORKER_TIMER);
 		PrintTimer("Communication Time", COMMUNICATION_TIMER);
 		PrintTimer("- Serialization Time", SERIALIZATION_TIMER);
 		PrintTimer("- Transfer Time", TRANSFER_TIMER);
 		PrintTimer("Total Computational Time", WORKER_TIMER);
-		if (_my_rank == MASTER_RANK)
+		PrintTimer("Total gspan time", GSPAN_TIMER);
+		if (_my_rank == MASTER_RANK) {
 			cout << "Total #msgs=" << global_msg_num << ", Total #vadd="
 					<< global_vadd_num << endl;
-
+			printf("total #supersteps=%d\n", step_num());
+		}
 		// dump graph
 		ResetTimer(WORKER_TIMER);
 		dump_partition(params.output_path.c_str());
 		StopTimer(WORKER_TIMER);
 		PrintTimer("Dump Time", WORKER_TIMER);
-#ifdef SIMULATION
-		if (get_worker_id() == MASTER_RANK){
-			gspan->run(1, 1, 3, false, false, true);
-		}
-#endif
+
 	}
 
 	int getworkervertexnumber() {
 		return vertexes.size();
+	}
+
+	void test() {
+//		gspanMsg.size = 1;
+//		if (dfs.src == 'l') {
+//			gspanMsg.fromid = dfs.from;
+//			gspanMsg.fromlabel = dfs.fromlabel;
+//			gspanMsg.toid = dfs.to;
+//			gspanMsg.tolabel = dfs.tolabel;
+//		} else if (dfs.src == 'r') {
+//			gspanMsg.fromid = dfs.to;
+//			gspanMsg.fromlabel = dfs.tolabel;
+//			gspanMsg.toid = dfs.from;
+//			gspanMsg.tolabel = dfs.fromlabel;
+//		} else
+//			assert(false);
+//		mine();
+	}
+
+	VertexContainer& getAllVertexes() {
+		return vertexes;
 	}
 
 private:
@@ -405,6 +643,12 @@ private:
 	MessageBuffer<VertexT>* message_buffer;
 	Combiner<MessageT>* combiner;
 	AggregatorT* aggregator;
+	//-------------add by zjh---------------------
+
+	long long global_msg_num = 0;
+	long long global_vadd_num = 0;
+	bool terminate = false;
+
 };
 
 #endif

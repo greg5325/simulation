@@ -14,7 +14,7 @@ using namespace std;
 
 #define HDFS_BUF_SIZE 65536
 #define LINE_DEFAULT_SIZE 4096
-#define HDFS_BLOCK_SIZE 8388608 //8M
+#define HDFS_BLOCK_SIZE 9388608 //8M
 
 const char* newLine = "\n";
 //====== get File System ======
