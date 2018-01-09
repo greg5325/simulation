@@ -22,10 +22,9 @@ int main(int argc, char* argv[]) {
 	init_workers();
 
 	if(get_worker_id() == MASTER_RANK){
-		printf("number of args:%d\n",argc);
-	    for (int i = 0; i<argc; i++){
-	        cout << argv[i] << endl;
-	    }
+		if(argc>1){
+			GSPAN::resultfile=argv[1];
+		}
 	}
 
 #ifdef little

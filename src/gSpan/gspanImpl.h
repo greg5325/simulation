@@ -24,12 +24,12 @@
 //#include "gspan.h"
 #include "../basic/Worker.h"
 #include <iterator>
-
+#include <fstream>
 #include <stdlib.h>
 #include <unistd.h>
 
 namespace GSPAN {
-
+char * resultfile=NULL;
 gSpan::gSpan(void) {
 
 #ifdef SIMULATION
@@ -165,6 +165,8 @@ void gSpan::report_single(Graph &g, unsigned int sup) {
 }
 #endif
 
+
+
 void gSpan::report(Projected &projected, unsigned int sup) {
 
 	/* Filter too small/too large graphs.
@@ -224,6 +226,32 @@ void gSpan::report(Projected &projected, unsigned int sup) {
 	++ID;
 }
 
+
+void gSpan::store(Projected &projected, unsigned int sup) {
+
+	if(resultfile){
+		/* Filter too small/too large graphs.
+		 */
+		if (maxpat_max > maxpat_min && DFS_CODE.nodeCount() > maxpat_max)
+			return;
+		if (maxpat_min > 0 && DFS_CODE.nodeCount() < maxpat_min)
+			return;
+
+		std::ofstream ofile;
+		ofile.open(resultfile,std::ios::app);
+		Graph g(directed);
+		DFS_CODE.toGraph(g);
+		ofile << "t # " << ID << " * " << sup;
+
+		ofile<< '\n';
+		g.write(ofile);
+
+
+		ofile << "\n\n";
+
+		ID;
+	}
+}
 /* Recursive subgraph mining function (similar to subprocedure 1
  * Subgraph_Mining in [Yan2002]).
  */
@@ -278,9 +306,8 @@ void gSpan::project(Projected &projected) {
 	}
 
 
-#ifndef SIMULATION
-	report(projected, sup);
-#else
+#ifdef SIMULATION
+
 	supptestcount++;
 	static int reported = 0;
 	reported++;
@@ -334,17 +361,22 @@ void gSpan::project(Projected &projected) {
 	}
 	supppasscount++;
 	report(projected, supp);
+	store(projected, supp);
+
+#else
+	report(projected, sup);
 #endif
 
 
 	/* We just outputted a frequent subgraph.  As it is frequent enough, so
 	 * might be its (n+1)-extension-graphs, hence we enumerate them all.
 	 */
+
 	const RMPath rmpath = DFS_CODE.buildRMPath(); //build by backward traverse.
 	int minlabel = DFS_CODE[0].fromlabel; //root vertex label, minlabel of dfscode
 	int maxtoc = DFS_CODE[rmpath[0]].to; //max vertexID of dfs code.
 
-	//===========================backward======================================
+	//===============================================backward==========================================
 	for (int i = (rmpath.size() - 1); i >= 0; --i) {
 		int from = DFS_CODE[rmpath[i]].from;
 		int to = DFS_CODE[rmpath[0]].to;
@@ -736,8 +768,19 @@ void gSpan::project(Projected &projected) {
 }
 #endif
 #ifdef SIMULATION
+
 void gSpan::run(unsigned int _minsup, unsigned int _maxpat_min,
 		unsigned int _maxpat_max, bool _enc, bool _where, bool _directed) {
+	/*
+	 *
+	 * parameters
+	 * minsup
+	 * maxpat_min, minimum nodes number
+	 * maxpat_max, maximum nodes number
+	 *
+	 *
+	 *
+	 */
 	os = &std::cout;
 	ID = 0;
 	minsup = _minsup;

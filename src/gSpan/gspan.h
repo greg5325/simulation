@@ -410,6 +410,7 @@ private:
 	unsigned int support(Projected&);
 	void project(Projected &);
 	void report(Projected &, unsigned int);
+	void store(Projected &, unsigned int);
 
 	std::istream &read(std::istream &);
 

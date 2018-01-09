@@ -11,6 +11,7 @@
 #include "../utils/Combiner.h"
 #include "../utils/Aggregator.h"
 #include "../gSpan/gspan.h"
+#include "SelfSimulation.h"
 using namespace std;
 //------------------------------------------------------------------------------------------------------------------------------------
 enum Phase {
@@ -56,6 +57,8 @@ bool mutated = false;
 vector<vector<int> > partialSuppStack;
 int supp;
 
+
+
 void processgspanMsg() {
 	edges.resize(gspanMsg.size);
 	edges[gspanMsg.size - 1] = gspanMsg;
@@ -69,6 +72,8 @@ void processgspanMsg() {
 		q.labels[e.toid] = e.tolabel;
 		q.queryVertexToEdges[e.fromid].push_back(e.toid);
 	}
+
+
 
 	//used to tell the new add vertexes.
 	if (edges.size() > 1) {
@@ -90,6 +95,7 @@ void processgspanMsg() {
 		partialSuppStack[partialSuppStack.size() - 1][gspanMsg.fromid] = 0;
 	if (gspanMsg.tolabel != -1)
 		partialSuppStack[partialSuppStack.size() - 1][gspanMsg.toid] = 0;
+
 
 }
 int curSupp() {
@@ -331,6 +337,7 @@ public:
 
 		if (get_worker_id() == MASTER_RANK)
 			setBit(WAKE_ALL_ORBIT);
+
 		while (true) {
 			preprocessSuperstep++;
 			//===================
@@ -424,9 +431,10 @@ public:
 	void looponsim() {
 		long long step_msg_num;
 		long long step_vadd_num;
-		if (get_worker_id() == MASTER_RANK)
-//			printf("\n====================enter loopsim======================\n");
+		if (get_worker_id() == MASTER_RANK){
+			printf("\n====================enter loopsim======================\n");
 			setBit(Query_Mutated);
+		}
 		setBit(WAKE_ALL_ORBIT);
 		while (true) {
 //			worker_barrier();
@@ -565,21 +573,19 @@ public:
 		//supersteps
 		global_step_num = 0;
 		//==============================loop start here=========================================
-		GSPAN::gSpan gspan;
+		GSPAN::gSpan gspan;//initialize gspan and the label set
 		minsup = 20000;
 		preprocess();
 
 		if (get_worker_id() != MASTER_RANK) {
 			looponsim();
 		} else {
-
 			ST("loop start\n");
 			StartTimer(GSPAN_TIMER);
 #ifdef little
-			gspan.run(2, 1, 2, false, false, true);
+			gspan.run(2, 1, 3, false, false, true);
 #else
 			gspan.run(minsup, 1, 6, false, false, true);
-
 #endif
 			StopTimer(GSPAN_TIMER);
 //			test();
