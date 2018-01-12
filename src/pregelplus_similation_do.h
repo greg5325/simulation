@@ -77,8 +77,9 @@ public:
 			vector<int> &partialSupp = partialSuppStack[partialSuppStack.size()
 					- 1];
 //			/*
-//			 * initial the simcount array, the size of this array equals to the number of vertex
+//			 * initial the simcount array, the size of this array equals to the number of vertexes in q
 //			 */
+
 //			for (int j = 0; j < q.labels.size(); j++) {
 //				value().simcount.push_back(value().inDegree);
 //			}
@@ -132,6 +133,7 @@ public:
 					&& gspanMsg.fromlabel != -1) {
 				bitmap_msg |= 1 << gspanMsg.fromid;
 			}
+
 			//update according to b
 			if (simset[gspanMsg.fromid] == PRESENT_ELEMENT) {
 				if (simcount[gspanMsg.toid] == 0) {
@@ -156,7 +158,7 @@ public:
 //			 putchar(' ');
 //			 }
 //			 printf("\n");*/
-//
+
 //			//broadcast message
 			if (bitmap_msg != 0)
 				broadcast(bitmap_msg);
@@ -164,7 +166,6 @@ public:
 		} else {
 
 			//alias here
-
 			vector<VertexID> &simset = simsetStack[simsetStack.size() - 1];
 			vector<int> &simcount = simcountStack[simcountStack.size() - 1];
 			vector<int> &partialSupp = partialSuppStack[partialSuppStack.size()
@@ -229,10 +230,10 @@ public:
 			for (int i = 0; i < nbs.size(); i++) {
 				send_message(nbs[i], value().label);
 			}
-		}
-		else if(preprocessSuperstep==2){
+		} else if (preprocessSuperstep == 2) {
 			//summarize the edge frequency in this partition
-			for(MessageContainer::iterator it=messages.begin();it!=messages.end();++it){
+			for (MessageContainer::iterator it = messages.begin();
+					it != messages.end(); ++it) {
 				edgeFrequent[value().label][*it]++;
 			}
 		}

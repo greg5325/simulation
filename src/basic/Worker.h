@@ -50,6 +50,7 @@ void mine();
 void * workercontext = 0;
 Query_Graph q;
 vector<Simmsg> edges;
+vector<vector<int> > leastmatchcounts;
 Simmsg gspanMsg;
 bool mutated = false;
 //=================support metric====================
@@ -73,7 +74,9 @@ void processgspanMsg() {
 		q.queryVertexToEdges[e.fromid].push_back(e.toid);
 	}
 
+	//add constraint to the children numbers of specific label, the children number must noless than the pattern
 
+	leastmatchcounts=leastMatchCount2(q.labels,q.queryVertexToEdges);
 
 	//used to tell the new add vertexes.
 	if (edges.size() > 1) {
