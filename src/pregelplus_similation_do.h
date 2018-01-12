@@ -136,7 +136,9 @@ public:
 
 			//update according to b
 			if (simset[gspanMsg.fromid] == PRESENT_ELEMENT) {
-				if (simcount[gspanMsg.toid] == 0) {
+//				for(int dst=0;dst<lea/)
+				if (simcount[gspanMsg.toid] <leastmatchcounts[gspanMsg.fromid][gspanMsg.toid]) {
+//				if (simcount[gspanMsg.toid] ==0) {
 					simset[gspanMsg.fromid] = ABSENT_ELEMENT;
 					partialSupp[gspanMsg.fromid]--;
 					bitmap_msg |= 1 << gspanMsg.fromid;
@@ -200,7 +202,8 @@ public:
 				 * updated simcount can cover i's outNeighbors
 				 */
 				for (int j = 0; j < q.queryVertexToEdges[i].size(); j++) {
-					if (simcount[q.queryVertexToEdges[i][j]] == 0) {
+					if (simcount[q.queryVertexToEdges[i][j]] < leastmatchcounts[i][q.queryVertexToEdges[i][j]]) {
+//					if (simcount[q.queryVertexToEdges[i][j]] ==0) {
 						//simulation failed
 
 						//first, setup the message

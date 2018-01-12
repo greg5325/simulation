@@ -252,11 +252,11 @@ vector<vector<int> > leastMatchCount2(vector<char> & labels, vector<vector<int> 
 	least_match_counts.resize(queryVertexToEdges.size());
 
 	for(unsigned int src=0;src<queryVertexToEdges.size();src++){
-		least_match_counts[src].resize(queryVertexToEdges[src].size(),0);
+		least_match_counts[src].resize(queryVertexToEdges.size(),0);
 		for(unsigned int dst=0;dst<queryVertexToEdges[src].size();dst++){
 			for(unsigned int i=0;i<queryVertexToEdges[src].size();i++){
 				if(sims[queryVertexToEdges[src][dst]] & 1<<queryVertexToEdges[src][i]){
-					least_match_counts[src][dst]++;
+					least_match_counts[src][queryVertexToEdges[src][dst]]++;
 				}
 			}
 		}
