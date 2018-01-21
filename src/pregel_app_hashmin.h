@@ -27,7 +27,7 @@ obinstream & operator>>(obinstream & m, CCValue_pregel & v){
 class CCVertex_pregel:public Vertex<VertexID, CCValue_pregel, VertexID>
 {
 	public:
-		void broadcast(VertexID msg)
+		void broadcastout(VertexID msg)
 		{
 			vector<VertexID> & nbs=value().outNeighbors;
 			for(int i=0; i<nbs.size(); i++)
@@ -47,7 +47,7 @@ class CCVertex_pregel:public Vertex<VertexID, CCValue_pregel, VertexID>
 					if(min>nbs[i]) min=nbs[i];
 				}
 				value().color=min;
-				broadcast(min);
+				broadcastout(min);
 				vote_to_halt();
 			}
 			else
@@ -60,7 +60,7 @@ class CCVertex_pregel:public Vertex<VertexID, CCValue_pregel, VertexID>
 				if(min<value().color)
 				{
 					value().color=min;
-					broadcast(min);
+					broadcastout(min);
 				}
 				vote_to_halt();
 			}

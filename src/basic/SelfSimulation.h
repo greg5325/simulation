@@ -121,15 +121,7 @@ vector<unsigned int> selfsimulation(vector<char> & labels,
 }
 
 vector<unsigned int> selfdualsimulation(vector<char> & labels,
-		vector<vector<int> > & outEdges) {
-
-	vector<vector<int> > inEdges;
-	inEdges.resize(outEdges.size());
-	for (int i = 0; i < outEdges.size(); i++) {
-		for (int j = 0; j < outEdges[i].size(); j++) {
-			inEdges[outEdges[i][j]].push_back(i);
-		}
-	}
+		vector<vector<int> > & outEdges, vector<vector<int> > & inEdges) {
 
 	vector<unsigned int> prevsims;
 	vector<unsigned int> sims;
@@ -226,40 +218,40 @@ vector<unsigned int> selfdualsimulation(vector<char> & labels,
 
 	while (exist) {
 
-		printf("========================while start=======================");
-
-		for (int i = 0; i < sims.size(); i++) {
-			printf("sims of %d:", i);
-			for (int j = 0; j < labels.size(); j++) {
-				if (sims[i] & 1 << j) {
-					printf("%d ", j);
-				}
-			}
-			printf("\n");
-		}
-		printf("=============sims end=============\n\n");
-
-		for (int i = 0; i < removes_pre.size(); i++) {
-			printf("remove_pre of %d:", i);
-			for (int j = 0; j < labels.size(); j++) {
-				if (removes_pre[i] & 1 << j) {
-					printf("%d ", j);
-				}
-			}
-			printf("\n");
-		}
-		printf("===========removes_pre end===========\n\n");
-
-		for (int i = 0; i < removes_pre.size(); i++) {
-			printf("remove_suc of %d:", i);
-			for (int j = 0; j < labels.size(); j++) {
-				if (removes_suc[i] & 1 << j) {
-					printf("%d ", j);
-				}
-			}
-			printf("\n");
-		}
-		printf("===========removes_suc end===========\n\n");
+//		printf("========================while start=======================");
+//
+//		for (int i = 0; i < sims.size(); i++) {
+//			printf("sims of %d:", i);
+//			for (int j = 0; j < labels.size(); j++) {
+//				if (sims[i] & 1 << j) {
+//					printf("%d ", j);
+//				}
+//			}
+//			printf("\n");
+//		}
+//		printf("=============sims end=============\n\n");
+//
+//		for (int i = 0; i < removes_pre.size(); i++) {
+//			printf("remove_pre of %d:", i);
+//			for (int j = 0; j < labels.size(); j++) {
+//				if (removes_pre[i] & 1 << j) {
+//					printf("%d ", j);
+//				}
+//			}
+//			printf("\n");
+//		}
+//		printf("===========removes_pre end===========\n\n");
+//
+//		for (int i = 0; i < removes_pre.size(); i++) {
+//			printf("remove_suc of %d:", i);
+//			for (int j = 0; j < labels.size(); j++) {
+//				if (removes_suc[i] & 1 << j) {
+//					printf("%d ", j);
+//				}
+//			}
+//			printf("\n");
+//		}
+//		printf("===========removes_suc end===========\n\n");
 
 		if (removes_pre[v]) {
 			for (unsigned int u = 0; u < labels.size(); u++) {
@@ -526,54 +518,40 @@ vector<vector<int> > leastMatchCount2(vector<char> & labels,
 }
 
 vector<vector<vector<int> > > leastDualMatchCount(vector<char> & labels,
-		vector<vector<int> > & outEdges) {
-	vector<vector<int> > inEdges;
-	inEdges.resize(outEdges.size());
-	for (int i = 0; i < outEdges.size(); i++) {
-		for (int j = 0; j < outEdges[i].size(); j++) {
-			inEdges[outEdges[i][j]].push_back(i);
-		}
-	}
+		vector<vector<int> > & outEdges, vector<vector<int> > & inEdges) {
 
-	vector<unsigned int> sims=selfdualsimulation(labels,outEdges);
+	vector<unsigned int> sims = selfdualsimulation(labels, outEdges, inEdges);
 
+	vector<vector<vector<int> > > least_match_counts;
+	least_match_counts.resize(2);
 
-	vector<vector<int> > least_pre_match_counts;
+	vector<vector<int> > & least_pre_match_counts = least_match_counts[0];
 	least_pre_match_counts.resize(outEdges.size());
 
 	for (unsigned int src = 0; src < outEdges.size(); src++) {
 		least_pre_match_counts[src].resize(outEdges.size(), 0);
-		for (unsigned int dst = 0; dst < outEdges[src].size();
-				dst++) {
+		for (unsigned int dst = 0; dst < outEdges[src].size(); dst++) {
 			for (unsigned int i = 0; i < outEdges[src].size(); i++) {
-				if (sims[outEdges[src][dst]]
-						& 1 << outEdges[src][i]) {
+				if (sims[outEdges[src][dst]] & 1 << outEdges[src][i]) {
 					least_pre_match_counts[src][outEdges[src][dst]]++;
 				}
 			}
 		}
 	}
 
-
-	vector<vector<int> > least_suc_match_counts;
+	vector<vector<int> > & least_suc_match_counts = least_match_counts[1];
 	least_suc_match_counts.resize(inEdges.size());
 
 	for (unsigned int src = 0; src < inEdges.size(); src++) {
 		least_suc_match_counts[src].resize(inEdges.size(), 0);
-		for (unsigned int dst = 0; dst < inEdges[src].size();
-				dst++) {
+		for (unsigned int dst = 0; dst < inEdges[src].size(); dst++) {
 			for (unsigned int i = 0; i < inEdges[src].size(); i++) {
-				if (sims[inEdges[src][dst]]
-						& 1 << inEdges[src][i]) {
+				if (sims[inEdges[src][dst]] & 1 << inEdges[src][i]) {
 					least_suc_match_counts[src][inEdges[src][dst]]++;
 				}
 			}
 		}
 	}
-
-	vector<vector<vector<int> > > least_match_counts;
-	least_match_counts.push_back(least_pre_match_counts);
-	least_match_counts.push_back(least_suc_match_counts);
 
 	return least_match_counts;
 }

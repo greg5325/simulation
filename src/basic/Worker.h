@@ -26,7 +26,8 @@ int minsup = 0;
 //=================Query graph=========================
 struct Query_Graph {
 	vector<char> labels;
-	vector<vector<VertexID> > queryVertexToEdges;
+	vector<vector<VertexID> > outEdges;
+	vector<vector<VertexID> > inEdges;
 };
 
 struct Simmsg {
@@ -50,7 +51,8 @@ void mine();
 void * workercontext = 0;
 Query_Graph q;
 vector<Simmsg> edges;
-vector<vector<int> > leastmatchcounts;
+vector<vector<int> > leastprematchcounts;
+vector<vector<int> > leastsucmatchcounts;
 Simmsg gspanMsg;
 bool mutated = false;
 //=================support metric====================
@@ -65,18 +67,27 @@ void processgspanMsg() {
 	edges[gspanMsg.size - 1] = gspanMsg;
 	//construct graph
 	q.labels.resize(std::max(gspanMsg.fromid, gspanMsg.toid) + 1);
-	q.queryVertexToEdges.clear();
-	q.queryVertexToEdges.resize(q.labels.size());
+	q.outEdges.clear();
+	q.outEdges.resize(q.labels.size());
 	for (int i = 0; i < edges.size(); ++i) {
 		Simmsg &e = edges[i];
 		q.labels[e.fromid] = e.fromlabel;
 		q.labels[e.toid] = e.tolabel;
-		q.queryVertexToEdges[e.fromid].push_back(e.toid);
+		q.outEdges[e.fromid].push_back(e.toid);
+	}
+	q.inEdges.clear();
+	q.inEdges.resize(q.outEdges.size());
+	for (int i = 0; i < q.outEdges.size(); i++) {
+		for (int j = 0; j < q.outEdges[i].size(); j++) {
+			q.inEdges[q.outEdges[i][j]].push_back(i);
+		}
 	}
 
 	//add constraint to the children numbers of specific label, the children number must noless than the pattern
+	vector<vector<vector<int> > > leastmatchcounts=leastDualMatchCount(q.labels,q.outEdges,q.inEdges);
+	leastprematchcounts=leastmatchcounts[0];
+	leastsucmatchcounts=leastmatchcounts[1];
 
-	leastmatchcounts=leastMatchCount2(q.labels,q.queryVertexToEdges);
 
 	//used to tell the new add vertexes.
 	if (edges.size() > 1) {
