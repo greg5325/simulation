@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
 	}
 
 #ifdef little
-	pregel_similation("/simgraph", "/simresult", false);
+	pregel_similation("/simgraph2", "/simresult", false);
 #else
 	pregel_similation("/input/twetter/vertexformat", "/output/twetter/simresult", false);
 #endif

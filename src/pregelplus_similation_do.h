@@ -21,6 +21,8 @@ struct CCValue_pregel {
 	char label;
 	int id;
 	int inDegree;
+	vector<VertexID> inNeighbors;
+	int outDegree;
 	vector<VertexID> outNeighbors; //邻接顶点
 	vector<vector<int> > simcountStack; //子结点simulate数[*,*,*....]
 //TODO:for simset, consider using bitmap to store the set to accelerate the process
@@ -31,6 +33,8 @@ ibinstream & operator<<(ibinstream & m, const CCValue_pregel & v) {
 	m << v.label;
 	m << v.id;
 	m << v.inDegree;
+	m << v.inNeighbors;
+	m << v.outDegree;
 	m << v.outNeighbors;
 	return m;
 }
@@ -39,6 +43,8 @@ obinstream & operator>>(obinstream & m, CCValue_pregel & v) {
 	m >> v.label;
 	m >> v.id;
 	m >> v.inDegree;
+	m >> v.inNeighbors;
+	m >> v.outDegree;
 	m >> v.outNeighbors;
 	return m;
 }
@@ -336,14 +342,17 @@ public:
 		v->value().label = atoi(label);
 #endif
 		pch = strtok(NULL, " "); //outDegree
-		int num = atoi(pch);
-		for (int i = 0; i < num; i++) {
+		v->value().outDegree=atoi(pch);
+		for (int i = 0; i < v->value().outDegree; i++) {
 			pch = strtok(NULL, " "); //neighbor
 			v->value().outNeighbors.push_back(atoi(pch));
 		}
 		pch = strtok(NULL, " "); //inDegree
 		v->value().inDegree = atoi(pch);
-
+		for (int i=0;i< v->value().inDegree;i++){
+			pch=strtok(NULL," ");
+			v->value().inNeighbors.push_back(atoi(pch));
+		}
 		return v;
 	}
 
