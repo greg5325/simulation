@@ -104,7 +104,7 @@ void processgspanMsg() {
 		partialSuppStack[partialSuppStack.size() - 1] =
 				partialSuppStack[partialSuppStack.size() - 2];
 	}
-	partialSuppStack[partialSuppStack.size() - 1].resize(q.labels.size());
+	partialSuppStack[partialSuppStack.size() - 1].resize(q.labels.size(),0);
 	if (gspanMsg.fromlabel != -1)
 		partialSuppStack[partialSuppStack.size() - 1][gspanMsg.fromid] = 0;
 	if (gspanMsg.tolabel != -1)

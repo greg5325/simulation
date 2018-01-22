@@ -338,7 +338,9 @@ void gSpan::project(Projected &projected) {
 	simstarttime = gspanstoptime;
 
 	StopTimer(GSPAN_TIMER);
-
+	ST("report DFS_CODE start\n");
+	outputdfscode(DFS_CODE);
+	ST("report DFS_CODE end\n");
 	mine();
 	StartTimer(GSPAN_TIMER);
 

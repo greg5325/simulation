@@ -163,7 +163,8 @@ public:
 			//update according to a
 			if (simset[gspanMsg.toid] == PRESENT_ELEMENT) {
 				if (simparentcount[gspanMsg.fromid]
-						< leastsucmatchcounts[gspanMsg.toid][gspanMsg.fromlabel]) {
+						< leastsucmatchcounts[gspanMsg.toid][gspanMsg.fromid]) {
+//					ST("update according to a: vid:%d simparentcount:%d leastsucmatchcounts:%d\n",value().id,simparentcount[gspanMsg.fromid],leastsucmatchcounts[gspanMsg.toid][gspanMsg.fromid]);
 					simset[gspanMsg.toid] = ABSENT_ELEMENT;
 					partialSupp[gspanMsg.toid]--;
 					bitmap_msg |= 1 << gspanMsg.toid;
@@ -202,8 +203,8 @@ public:
 			 */
 			for (int i = 0; i < messages.size(); i++) {
 				if (messages[i] & 1 << 31) {
-					for(int j=0;j<simparentcount.size();j++){
-						if(GetBit(messages[i],j)==1){
+					for (int j = 0; j < simparentcount.size(); j++) {
+						if (GetBit(messages[i], j) == 1) {
 							simparentcount[j]--;
 							assert(simparentcount[j]>=0);
 						}
@@ -249,13 +250,15 @@ public:
 						break;
 					}
 				}
-
+				if (simset[i] == ABSENT_ELEMENT)
+					continue; //Neglect the null element
 				/*
 				 * iterate over all the inNeighbor of i, and check if the
 				 * updated simparentcount can cover i's inNeighbors
 				 */
-				for(int j=0;j<q.inEdges[i].size();j++){
-					if(simparentcount[q.inEdges[i][j]]<leastsucmatchcounts[i][q.inEdges[i][j]]){
+				for (int j = 0; j < q.inEdges[i].size(); j++) {
+					if (simparentcount[q.inEdges[i][j]]
+							< leastsucmatchcounts[i][q.inEdges[i][j]]) {
 						//simulation failed
 
 						//first, setup the message
@@ -300,6 +303,36 @@ public:
 		if (phase == preprocessing) {
 			Vpreprocessing(messages);
 		} else if (phase == normalcomputing) {
+			{/* //debug
+				ST("simchildcount, simparentcount and simset of node %d:\n",
+						value().id);
+				if (value().simchildcountStack.size() > 0) {
+					vector<int> & simchildcount =
+							value().simchildcountStack[value().simchildcountStack.size()
+									- 1];
+					for (int i = 0; i < simchildcount.size(); i++) {
+						printf("%d ", simchildcount[i]);
+					}
+					printf("\n");
+				}
+				if (value().simparentcountStack.size() > 0) {
+					vector<int> & simparentcount =
+							value().simparentcountStack[value().simparentcountStack.size()
+									- 1];
+					for (int i = 0; i < simparentcount.size(); i++) {
+						printf("%d ", simparentcount[i]);
+					}
+					printf("\n");
+				}
+				if (value().simsetStack.size() > 0) {
+					vector<int> & simset =
+							value().simsetStack[value().simsetStack.size() - 1];
+					for (int i = 0; i < simset.size(); i++) {
+						printf("%d ", simset[i]);
+					}
+					printf("\n");
+				}
+			*/}
 			Vnormalcompute(messages);
 		}
 	}
@@ -406,6 +439,15 @@ public:
 	virtual void toline(CCVertex_pregel* v, BufferedWriter & writer) {
 //		sprintf(buf, "vid:%d\t can_similate:%d \n", v->value().id,
 //				v->value().simset[0]);
+//		printf("v#%d:\n\tin:",v->value().id);
+//		for(int i=0;i<v->value().inNeighbors.size();i++){
+//			printf("%d ",v->value().inNeighbors[i]);
+//		}
+//		printf("\n\tout:");
+//		for(int i=0;i<v->value().outNeighbors.size();i++){
+//			printf("%d ",v->value().outNeighbors[i]);
+//		}
+//		printf("\n");
 		writer.write(buf);
 	}
 };

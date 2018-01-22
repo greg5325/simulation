@@ -314,7 +314,6 @@ vector<unsigned int> selfdualsimulation(vector<char> & labels,
 				unsigned int u = outEdges[v][u_index];
 				for (unsigned int w = 0; w < labels.size(); w++) {
 					if (removes_suc[v] & 1 << w) { //for all w in remove(v)
-						printf("remove %d from sims[%d] of suc(%d)\n", w, u, v);
 						if (sims[u] & 1 << w) { //w simulate u
 							sims[u] &= ~(1 << w);
 
@@ -348,9 +347,7 @@ vector<unsigned int> selfdualsimulation(vector<char> & labels,
 								if (!(parents & sims[u])) {
 									removes_suc[u] |= 1 << w__;
 								}
-
 							}
-
 						}
 					}
 				}
