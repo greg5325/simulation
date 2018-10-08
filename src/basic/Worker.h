@@ -15,12 +15,15 @@
 using namespace std;
 //------------------------------------------------------------------------------------------------------------------------------------
 enum Phase {
-	preprocessing = 1, normalcomputing = 2
+	preprocessing = 1, normalcomputing = 2, postloopsim=3
 };
 Phase phase = preprocessing;
 //=================preprocessing=====================
 map<int, map<int, int> > edgeFrequent;
+map<int, map<int, int> > src_edgeFrequent;
+map<int, map<int, int> > dst_edgeFrequent;
 int preprocessSuperstep = 0;
+vector<char> labelset_global;
 int labelsetsize = 0;
 int minsup = 0;
 //=================Query graph=========================
@@ -60,8 +63,6 @@ bool mutated = false;
 vector<vector<int> > partialSuppStack;
 int supp;
 
-
-
 void processgspanMsg() {
 	edges.resize(gspanMsg.size);
 	edges[gspanMsg.size - 1] = gspanMsg;
@@ -84,18 +85,20 @@ void processgspanMsg() {
 	}
 
 	//add constraint to the children numbers of specific label, the children number must noless than the pattern
-	vector<vector<vector<int> > > leastmatchcounts=leastDualMatchCount(q.labels,q.outEdges,q.inEdges);
-	leastprematchcounts=leastmatchcounts[0];
-	leastsucmatchcounts=leastmatchcounts[1];
-
+	vector<vector<vector<int> > > leastmatchcounts = leastDualMatchCount(
+			q.labels, q.outEdges, q.inEdges);
+	leastprematchcounts = leastmatchcounts[0];
+	leastsucmatchcounts = leastmatchcounts[1];
 
 	//used to tell the new add vertexes.
 	if (edges.size() > 1) {
 		Simmsg &e = edges[edges.size() - 2];
-		if (gspanMsg.fromid <= std::max(e.fromid, e.toid))
-			gspanMsg.fromlabel == -1;
-		if (gspanMsg.toid <= std::max(e.fromid, e.toid))
-			gspanMsg.toid == -1;
+		if (gspanMsg.fromid <= std::max(e.fromid, e.toid)) {
+			gspanMsg.fromlabel = -1;
+		}
+		if (gspanMsg.toid <= std::max(e.fromid, e.toid)) {
+			gspanMsg.tolabel = -1;
+		}
 	}
 
 	//process partialSuppStack
@@ -104,17 +107,181 @@ void processgspanMsg() {
 		partialSuppStack[partialSuppStack.size() - 1] =
 				partialSuppStack[partialSuppStack.size() - 2];
 	}
-	partialSuppStack[partialSuppStack.size() - 1].resize(q.labels.size(),0);
+	partialSuppStack[partialSuppStack.size() - 1].resize(q.labels.size(), 0);
 	if (gspanMsg.fromlabel != -1)
 		partialSuppStack[partialSuppStack.size() - 1][gspanMsg.fromid] = 0;
 	if (gspanMsg.tolabel != -1)
 		partialSuppStack[partialSuppStack.size() - 1][gspanMsg.toid] = 0;
-
-
 }
 int curSupp() {
 	return supp;
 }
+
+//===========frequent extension constrain==================
+//maintained by gspanImpl, tell which vertexes is on rmpath
+vector<int> RMVertexes;
+
+//variables distributed on each worker
+map<int, map<int, int> > ext_e_src_freq;//srcid -> dstid -> freq
+map<int, map<int, int> > ext_e_dst_freq;//srcid -> dstid -> freq
+map<int, map<char, map<char, int> > > ext_v_src_freq;//RMpathvertexid -> lalbel -> src(direction) -> freq
+map<int, map<char, map<char, int> > > ext_v_dst_freq;//RMpathvertexid -> lalbel -> src(direction) -> freq
+
+//variables maintained by master
+vector<map<int, map<int, int> > > ext_e_freq_stack; //stack -> srcid -> dstid -> freq
+vector<map<int, map<char, map<char, int> > > > ext_v_freq_stack; //stack -> RMpathvertexid -> lalbel -> src(direction) -> freq
+void postsiminit(){
+	ext_e_src_freq.clear();
+	ext_e_dst_freq.clear();
+	ext_v_src_freq.clear();
+	ext_v_dst_freq.clear();
+	//exchange RMVertexes
+	if(get_worker_id()==MASTER_RANK){
+		masterBcast(RMVertexes);
+	}else{
+		slaveBcast(RMVertexes);
+	}
+
+	for(int i=0;i<RMVertexes.size();i++){
+		for(int j=0;j<RMVertexes.size();j++){
+			ext_e_src_freq[RMVertexes[i]][RMVertexes[j]]=0;
+			ext_e_dst_freq[RMVertexes[i]][RMVertexes[j]]=0;
+		}
+	}
+	for(int i=0;i<RMVertexes.size();i++){
+		for(int j=0;j<labelset_global.size();j++){
+			ext_v_src_freq[RMVertexes[i]][labelset_global[j]]['l']=0;
+			ext_v_src_freq[RMVertexes[i]][labelset_global[j]]['r']=0;
+			ext_v_dst_freq[RMVertexes[i]][labelset_global[j]]['l']=0;
+			ext_v_dst_freq[RMVertexes[i]][labelset_global[j]]['r']=0;
+		}
+	}
+}
+//executed after each super step
+void postsimmessageprocess() {
+	const int mpi_msg_size=RMVertexes.size()*RMVertexes.size()*2+RMVertexes.size()*labelsetsize*2*2;
+	int send[mpi_msg_size];
+	int recv[mpi_msg_size];
+
+	for(int i=0;i<mpi_msg_size;i++){
+		send[i]=0;
+		recv[i]=0;
+	}
+	//prepare ext_e_src_freq to be send
+	int offset=0;
+	for(int i=0;i<RMVertexes.size();i++){
+		if(ext_e_src_freq.find(RMVertexes[i])==ext_e_src_freq.end())continue;
+
+		for(int j=0;j<RMVertexes.size();j++){
+			if(i==j)continue;
+			if(ext_e_src_freq[RMVertexes[i]].find(RMVertexes[j])==ext_e_src_freq[RMVertexes[i]].end())continue;
+
+			send[offset+RMVertexes.size()*i+j]=ext_e_src_freq[RMVertexes[i]][RMVertexes[j]];
+		}
+	}
+
+	//prepare ext_e_dst_freq to be send
+	offset=RMVertexes.size()*RMVertexes.size();
+	for(int i=0;i<RMVertexes.size();i++){
+		if(ext_e_dst_freq.find(RMVertexes[i])==ext_e_dst_freq.end())continue;
+
+		for(int j=0;j<RMVertexes.size();j++){
+			if(i==j)continue;
+			if(ext_e_dst_freq[RMVertexes[i]].find(RMVertexes[j])==ext_e_dst_freq[RMVertexes[i]].end())continue;
+
+			send[offset+RMVertexes.size()*i+j]=ext_e_dst_freq[RMVertexes[i]][RMVertexes[j]];
+		}
+	}
+	//prepare ext_v_src_freq
+	vector<char> src_pos;
+	src_pos.push_back('l');
+	src_pos.push_back('r');
+	offset=RMVertexes.size()*RMVertexes.size()*2;
+	for(int i=0;i<RMVertexes.size();i++){
+		if(ext_v_src_freq.find(RMVertexes[i])==ext_v_src_freq.end())continue;
+		for(int j=0;j<labelset_global.size();j++){
+			if(ext_v_src_freq[RMVertexes[i]].find(labelset_global[j])==ext_v_src_freq[RMVertexes[i]].end())continue;
+			for(int k=0;k<src_pos.size();k++){
+				if(ext_v_src_freq[RMVertexes[i]][labelset_global[j]].find(src_pos[k])==ext_v_src_freq[RMVertexes[i]][labelset_global[j]].end())continue;
+
+				send[offset+src_pos.size()*labelset_global.size()*i+src_pos.size()*j+k]=ext_v_src_freq[RMVertexes[i]][labelset_global[j]][src_pos[k]];
+			}
+		}
+	}
+	//prepare ext_v_dst_freq
+	offset=RMVertexes.size()*RMVertexes.size()*2+RMVertexes.size()*labelset_global.size()*src_pos.size();
+	for(int i=0;i<RMVertexes.size();i++){
+		if(ext_v_dst_freq.find(RMVertexes[i])==ext_v_dst_freq.end())continue;
+		for(int j=0;j<labelset_global.size();j++){
+			if(ext_v_dst_freq[RMVertexes[i]].find(labelset_global[j])==ext_v_dst_freq[RMVertexes[i]].end())continue;
+			for(int k=0;k<src_pos.size();k++){
+				if(ext_v_dst_freq[RMVertexes[i]][labelset_global[j]].find(src_pos[k])==ext_v_dst_freq[RMVertexes[i]][labelset_global[j]].end())continue;
+
+				send[offset+src_pos.size()*labelset_global.size()*i+src_pos.size()*j+k]=ext_v_dst_freq[RMVertexes[i]][labelset_global[j]][src_pos[k]];
+			}
+		}
+	}
+
+	MPI_Reduce(send, recv, mpi_msg_size,MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+	if(get_worker_id()==MASTER_RANK){
+		ext_e_freq_stack.resize(edges.size());
+		ext_v_freq_stack.resize(edges.size());
+		map<int, map<int, int> > & ext_e_freq=ext_e_freq_stack[ext_e_freq_stack.size()-1];
+		map<int, map<char, map<char, int> > > & ext_v_freq=ext_v_freq_stack[ext_v_freq_stack.size()-1];
+		ext_e_freq.clear();
+		ext_v_freq.clear();
+
+		//ext_e_freq
+		int offset1=0;
+		int offset2=RMVertexes.size()*RMVertexes.size();
+		for(int i=0;i<RMVertexes.size();i++){
+			for(int j=0;j<RMVertexes.size();j++){
+				ext_e_freq[RMVertexes[i]][RMVertexes[j]]=min(recv[offset1+RMVertexes.size()*i+j],recv[offset2+RMVertexes.size()*i+j]);
+			}
+		}
+		//ext_v_freq
+		offset1=RMVertexes.size()*RMVertexes.size()*2;
+		offset2=RMVertexes.size()*RMVertexes.size()*2+RMVertexes.size()*labelsetsize*2;
+		for(int i=0;i<RMVertexes.size();i++){
+			for(int j=0;j<labelset_global.size();j++){
+				for(int k=0;k<src_pos.size();k++){
+					ext_v_freq[RMVertexes[i]][labelset_global[j]][src_pos[k]]=
+						min(
+							recv[offset1+src_pos.size()*labelset_global.size()*i+src_pos.size()*j+k],
+							recv[offset2+src_pos.size()*labelset_global.size()*i+src_pos.size()*j+k]
+						);
+				}
+			}
+		}
+
+		{//debugzjh
+//			printf("RMVertexes: ");
+//			for(int i=0;i<RMVertexes.size();i++){
+//				printf("%d, ",RMVertexes[i]);
+//			}
+//			printf("\n");
+//
+//			for(map<int,map<int,int> >::iterator srcit=ext_e_freq.begin();srcit!=ext_e_freq.end();srcit++){
+//				for(map<int,int>::iterator dstit=srcit->second.begin();dstit!=srcit->second.end();dstit++){
+//					if(dstit->second!=0)
+//					printf("sup(%d,%d)=%d\n",srcit->first,dstit->first,dstit->second);
+//				}
+//			}
+//
+//			for(map<int, map<char, map<char, int> > >::iterator rmv=ext_v_freq.begin();rmv!=ext_v_freq.end();rmv++){
+//				for(map<char, map<char, int> >::iterator label=rmv->second.begin();label!=rmv->second.end();label++){
+//					for(map<char,int>::iterator direction=label->second.begin();direction!=label->second.end();direction++){
+//						if(direction->second!=0)
+//						printf("sup(id:%d,label:%c,src:%c)=%d\n",rmv->first,label->first,direction->first,direction->second);
+//					}
+//				}
+//			}
+		}
+
+	}
+}
+
 //----------------------------------------------------------------------------------------------------------------------------------------
 template<class VertexT, class AggregatorT = DummyAgg> //user-defined VertexT
 class Worker {
@@ -335,8 +502,10 @@ public:
 			else
 				break;
 		}
+//		printf("current before Worker.h!!-505\n");
 		hdfsCloseFile(fs, in);
 		hdfsDisconnect(fs);
+//		printf("current before Worker.h!!-508\n");
 		//cout<<"Worker "<<_my_rank<<": \""<<inpath<<"\" loaded"<<endl;//DEBUG !!!!!!!!!!
 	}
 	//=======================================================
@@ -347,13 +516,21 @@ public:
 	void preprocess() {
 		if (get_worker_id() == MASTER_RANK)
 			ST("Enter Preprocess\n");
-		phase = preprocessing;
+
+		//distribute label set;
+		if(get_worker_id()==MASTER_RANK){
+			masterBcast(labelset_global);
+		}else{
+			slaveBcast(labelset_global);
+		}
+		labelsetsize=labelset_global.size();
 
 		if (get_worker_id() == MASTER_RANK)
 			setBit(WAKE_ALL_ORBIT);
-
+		preprocessSuperstep = 0;
 		while (true) {
 			preprocessSuperstep++;
+
 			//===================
 			char bits_bor = all_bor(global_bor_bitmap);
 			if (getBit(FORCE_TERMINATE_ORBIT, bits_bor) == 1)
@@ -383,47 +560,129 @@ public:
 			to_add.clear();
 			//===================
 			worker_barrier();
-		}
+			// preprocess step
+			if (preprocessSuperstep == 2) {
+				setBit(WAKE_ALL_ORBIT);
+				int edgefrequentarray[labelsetsize * labelsetsize];
+				int result[labelsetsize * labelsetsize];
+				//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+				for (int i = 0; i < labelsetsize * labelsetsize; i++)
+					edgefrequentarray[i] = 0;
 
-		int edgefrequentarray[labelsetsize * labelsetsize];
-		for (int i = 0; i < labelsetsize * labelsetsize; i++)
-			edgefrequentarray[i] = 0;
-
-		for (map<int, map<int, int> >::iterator src = edgeFrequent.begin();
-				src != edgeFrequent.end(); ++src) {
-			for (map<int, int>::iterator dst = src->second.begin();
-					dst != src->second.end(); ++dst) {
+				for (map<int, map<int, int> >::iterator src =
+						src_edgeFrequent.begin(); src != src_edgeFrequent.end();
+						++src) {
+					for (map<int, int>::iterator dst = src->second.begin();
+							dst != src->second.end(); ++dst) {
 #ifdef little
-				edgefrequentarray[(src->first-'a')*labelsetsize+dst->first-'a']=dst->second;
+						edgefrequentarray[(src->first - 'a') * labelsetsize
+								+ dst->first - 'a'] = dst->second;
 #else
-				edgefrequentarray[(src->first - 1) * labelsetsize + dst->first
+						edgefrequentarray[(src->first - 1) * labelsetsize + dst->first
 						- 1] = dst->second;
 #endif
-			}
-		}
-
-		int result[labelsetsize * labelsetsize];
-		MPI_Reduce(edgefrequentarray, result, labelsetsize * labelsetsize,
-				MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-		if (get_worker_id() == MASTER_RANK) {
-			for (int i = 0; i < labelsetsize; i++) {
-				for (int j = 0; j < labelsetsize; j++) {
-#ifdef little
-					ST("<%c,%c> occurs %d times\n", i+'a',j+'a',result[i*labelsetsize+j]);
-					edgeFrequent[i+'a'][j+'a'] = result[i * labelsetsize + j];
-#else
-					if (result[i * labelsetsize + j] > minsup)
-						ST("<%d,%d> occurs %d times\n", i + 1, j + 1,
-								result[i * labelsetsize + j]);
-					edgeFrequent[i + 1][j + 1] = result[i * labelsetsize + j];
-#endif
+					}
 				}
+
+				MPI_Allreduce(edgefrequentarray, result,
+						labelsetsize * labelsetsize, MPI_INT, MPI_SUM,
+						MPI_COMM_WORLD);
+
+				for (int src = 0; src < labelsetsize; src++) {
+					for (int dst = 0; dst < labelsetsize; dst++) {
+#ifdef little
+						src_edgeFrequent[src + 'a'][dst + 'a'] = result[src
+								* labelsetsize + dst];
+//						if (get_worker_id() == MASTER_RANK)
+//							ST("src<%c,%c> occurs %d times\n", src + 'a',
+//									dst + 'a',
+//									src_edgeFrequent[src + 'a'][dst + 'a']);
+#else
+						src_edgeFrequent[src+1][dst+1]=result[src*labelsetsize+dst];
+#endif
+					}
+				}
+				//-----------------------------------------------------------------
+				for (int i = 0; i < labelsetsize * labelsetsize; i++)
+					edgefrequentarray[i] = 0;
+
+				for (map<int, map<int, int> >::iterator src =
+						dst_edgeFrequent.begin(); src != dst_edgeFrequent.end();
+						++src) {
+					for (map<int, int>::iterator dst = src->second.begin();
+							dst != src->second.end(); ++dst) {
+#ifdef little
+						edgefrequentarray[(src->first - 'a') * labelsetsize
+								+ dst->first - 'a'] = dst->second;
+#else
+						edgefrequentarray[(src->first - 1) * labelsetsize + dst->first
+						- 1] = dst->second;
+#endif
+					}
+				}
+
+				MPI_Allreduce(edgefrequentarray, result,
+						labelsetsize * labelsetsize, MPI_INT, MPI_SUM,
+						MPI_COMM_WORLD);
+
+				for (int src = 0; src < labelsetsize; src++) {
+					for (int dst = 0; dst < labelsetsize; dst++) {
+#ifdef little
+						dst_edgeFrequent[src + 'a'][dst + 'a'] = result[src
+								* labelsetsize + dst];
+//						if (get_worker_id() == MASTER_RANK)
+//							ST("dst<%c,%c> occurs %d times\n", src + 'a',
+//									dst + 'a',
+//									dst_edgeFrequent[src + 'a'][dst + 'a']);
+#else
+						dst_edgeFrequent[src+1][dst+1]=result[src*labelsetsize+dst];
+#endif
+					}
+				}
+				//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+				assert(src_edgeFrequent.size()==dst_edgeFrequent.size());
+				for (map<int, map<int, int> >::iterator src =
+						src_edgeFrequent.begin(); src != src_edgeFrequent.end();
+						src++) {
+					assert(
+							src_edgeFrequent[src->first].size()==dst_edgeFrequent[src->first].size());
+					for (map<int, int>::iterator dst = src->second.begin();
+							dst != src->second.end(); dst++) {
+						edgeFrequent[src->first][dst->first] = min(
+								src_edgeFrequent[src->first][dst->first],
+								dst_edgeFrequent[src->first][dst->first]);
+
+#ifdef little
+						if (get_worker_id() == MASTER_RANK)
+							ST("<%c,%c> occurs %d times\n", src->first,
+									dst->first,
+									edgeFrequent[src->first][dst->first]);
+#else
+						if (get_worker_id()==MASTER_RANK && edgeFrequent[src->first][dst->first] >= minsup)
+//						if (get_worker_id()==MASTER_RANK)
+						ST("<%d,%d> occurs %d times\n", src->first, dst->first,edgeFrequent[src->first][dst->first]);
+#endif
+					}
+				}
+
+			} else if (preprocessSuperstep == 3) {
+				//delete vertexes with low frequency
+				vector<VertexT*> vertexes_tmp = vertexes;
+				vertexes.clear();
+
+				for (typename vector<VertexT*>::iterator it =
+						vertexes_tmp.begin(); it != vertexes_tmp.end(); it++) {
+					if ((*it)->has_neighbor()) {
+						vertexes.push_back(*it);
+					} else {
+						delete *it;
+					}
+				}
+				//message buffer need to be reinit
+				message_buffer->reinit(vertexes);
 			}
-		} else {
-			edgeFrequent.clear();
 		}
 
-		phase = normalcomputing;
 		if (get_worker_id() == MASTER_RANK)
 			ST("Leave Preprocess\n");
 	}
@@ -440,13 +699,21 @@ public:
 		hdfsDisconnect(fs);
 	}
 	//=======================================================
-
+	void postsim_process(){
+		phase = postloopsim;
+		postsiminit();
+		all_compute();
+		postsimmessageprocess();
+		phase = normalcomputing;
+	}
 	// run the worker
 	void looponsim() {
 		long long step_msg_num;
 		long long step_vadd_num;
-		if (get_worker_id() == MASTER_RANK){
-			printf("\n====================enter loopsim======================\n");
+		if (get_worker_id() == MASTER_RANK) {
+			printf(
+					"\n====================enter loopsim======================\n");
+
 			setBit(Query_Mutated);
 		}
 		setBit(WAKE_ALL_ORBIT);
@@ -455,10 +722,13 @@ public:
 			global_step_num++;
 			ResetTimer(4);
 			//===================
+			if(get_worker_id()==MASTER_RANK
+					&&(!getBit(WAKE_ALL_ORBIT,global_bor_bitmap))
+					&&curSupp()<minsup)
+				setBit(Low_Sup_Teminate);
 			char bits_bor = all_bor(global_bor_bitmap);
 			if (getBit(FORCE_TERMINATE_ORBIT, bits_bor) == 1)
 				break;
-
 			if (getBit(Query_Mutated, bits_bor) == 1) {
 				if (get_worker_id() == MASTER_RANK) {
 					masterBcast(gspanMsg);
@@ -478,17 +748,30 @@ public:
 //							gspanMsg.tolabel);
 				}
 				processgspanMsg();
+				if (get_worker_id() == MASTER_RANK) {
+					printf("gspanMSG: (%d:%d, %d,%d)\n", gspanMsg.fromid,
+							gspanMsg.fromlabel, gspanMsg.toid,
+							gspanMsg.tolabel);
+				}
 				mutated = true;
 			} else {
 				mutated = false;
 			}
-
 			get_vnum() = all_sum(vertexes.size());
 			int wakeAll = getBit(WAKE_ALL_ORBIT, bits_bor);
 			if (wakeAll == 0) {
 				active_vnum() = all_sum(active_count);
 				if (active_vnum() == 0
 						&& getBit(HAS_MSG_ORBIT, bits_bor) == 0) {
+					if(!getBit(Low_Sup_Teminate, bits_bor))
+						postsim_process();
+					if (get_worker_id() == MASTER_RANK)
+						break; //all_halt AND no_msg
+					else
+						continue;
+				}
+				if(getBit(Low_Sup_Teminate, bits_bor)){
+					message_buffer->clearAllMsg();
 					if (get_worker_id() == MASTER_RANK)
 						break; //all_halt AND no_msg
 					else
@@ -502,6 +785,7 @@ public:
 				agg->init();
 			//==============================================================================
 			clearBits();
+
 			if (wakeAll == 1) {
 				all_compute();
 			} else {
@@ -547,7 +831,6 @@ public:
 				exit(-1);
 		}
 		init_timers();
-
 		//dispatch splits
 		ResetTimer(WORKER_TIMER);
 		vector<vector<string> >* arrangement;
@@ -557,14 +840,16 @@ public:
 							dispatchLocality(params.input_path.c_str()) :
 							dispatchRan(params.input_path.c_str());
 			//reportAssignment(arrangement);//DEBUG !!!!!!!!!!
-			masterScatter(*arrangement);
+			masterScatter(*arrangement);//fensan
 			vector<string>& assignedSplits = (*arrangement)[0];
 			//reading assigned splits (map)
 			for (vector<string>::iterator it = assignedSplits.begin();
 					it != assignedSplits.end(); it++)
 				load_graph(it->c_str());
+
 			delete arrangement;
 		} else {
+			printf("current before Worker.h!!-852\n");
 			vector<string> assignedSplits;
 			slaveScatter(assignedSplits);
 			//reading assigned splits (map)
@@ -572,13 +857,13 @@ public:
 					it != assignedSplits.end(); it++)
 				load_graph(it->c_str());
 		}
-
 		//send vertices according to hash_id (reduce)
 		sync_graph();
-
+//		printf("current before Worker.h!!-862\n");
 		message_buffer->init(vertexes);
 		//barrier for data loading
 		worker_barrier(); //@@@@@@@@@@@@@
+//		printf("current before Worker.h!!-866\n");
 		StopTimer(WORKER_TIMER);
 		PrintTimer("Load Time", WORKER_TIMER);
 		//finished loading graph.================================
@@ -587,19 +872,24 @@ public:
 		//supersteps
 		global_step_num = 0;
 		//==============================loop start here=========================================
-		GSPAN::gSpan gspan;//initialize gspan and the label set
-		minsup = 20000;
+		GSPAN::gSpan gspan; //initialize gspan and the label set
+#ifdef little
+		minsup = 2;
+#else
+		minsup = 1;
+#endif
+		phase = preprocessing;
 		preprocess();
-
+		phase = normalcomputing;
 		if (get_worker_id() != MASTER_RANK) {
 			looponsim();
 		} else {
 			ST("loop start\n");
 			StartTimer(GSPAN_TIMER);
 #ifdef little
-			gspan.run(2, 1, 3, false, false, true);
+			gspan.run(minsup, 1, 5, 5, false, false, true);
 #else
-			gspan.run(minsup, 1, 6, false, false, true);
+			gspan.run(minsup, 1, 5, 100, false, false, true);
 #endif
 			StopTimer(GSPAN_TIMER);
 //			test();
