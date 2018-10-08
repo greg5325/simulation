@@ -25,6 +25,7 @@
 #include <string>
 #include <iterator>
 #include <set>
+#include <map>
 
 namespace GSPAN {
 
@@ -38,19 +39,19 @@ namespace GSPAN {
  *
  */
 /*
-void DFSCode::fromGraph(Graph &g) {
-	clear();
+ void DFSCode::fromGraph(Graph &g) {
+ clear();
 
-	EdgeList edges;
-	for (unsigned int from = 0; from < g.size(); ++from) {
-		if (get_forward_root(g, g[from], edges) == false)
-			continue;
+ EdgeList edges;
+ for (unsigned int from = 0; from < g.size(); ++from) {
+ if (get_forward_root(g, g[from], edges) == false)
+ continue;
 
-		for (EdgeList::iterator it = edges.begin(); it != edges.end(); ++it)
-			push(from, (*it)->to, g[(*it)->from].label, (*it)->elabel,
-					g[(*it)->to].label);
-	}
-}*/
+ for (EdgeList::iterator it = edges.begin(); it != edges.end(); ++it)
+ push(from, (*it)->to, g[(*it)->from].label, (*it)->elabel,
+ g[(*it)->to].label);
+ }
+ }*/
 
 bool DFSCode::toGraph(Graph &g) {
 	g.clear();
@@ -62,30 +63,30 @@ bool DFSCode::toGraph(Graph &g) {
 //		TRACE("a new code\n");
 //		printf("(%d,%d,%c,%d,%c,%c)\n",it->from,it->to,it->fromlabel,it->elabel,it->tolabel,it->src);
 //		TRACE("a new code end\n");
-		if(it->src=='l'){
+		if (it->src == 'l') {
 			if (it->fromlabel != -1)
 				g[it->from].label = it->fromlabel;
 			if (it->tolabel != -1)
 				g[it->to].label = it->tolabel;
 			g[it->from].push(it->from, it->to, it->elabel);
-		}else if(it->src=='r'){
+		} else if (it->src == 'r') {
 			if (it->fromlabel != -1)
 				g[it->from].label = it->fromlabel;
 			if (it->tolabel != -1)
 				g[it->to].label = it->tolabel;
 			g[it->to].push(it->to, it->from, it->elabel);
-		}else{
+		} else {
 			assert(false);
 		}
 #else
 		if (it->fromlabel != -1)
-			g[it->from].label = it->fromlabel;
+		g[it->from].label = it->fromlabel;
 		if (it->tolabel != -1)
-			g[it->to].label = it->tolabel;
+		g[it->to].label = it->tolabel;
 
 		g[it->from].push(it->from, it->to, it->elabel);
 		if (g.directed == false)
-			g[it->to].push(it->to, it->from, it->elabel);
+		g[it->to].push(it->to, it->from, it->elabel);
 #endif
 	}
 
@@ -102,6 +103,56 @@ unsigned int DFSCode::nodeCount(void) {
 				(unsigned int) (std::max(it->from, it->to) + 1));
 
 	return (nodecount);
+}
+
+unsigned int DFSCode::labelCount(void) {
+	 std::map<unsigned int ,unsigned int >::iterator l_it;
+	unsigned int labelnum = 0;
+	unsigned int nodecount = 0;
+//	for (DFSCode::iterator it = begin(); it != end(); ++it)
+//		nodecount = std::max(nodecount,(unsigned int) (std::max(it->from, it->to) + 1));
+	nodecount=DFSCode::nodeCount();
+	std::map<unsigned int, int> nodeID;
+	for (unsigned int i = 0; i < nodecount; i++) {
+//		nodeID.insert(i, 0);
+		nodeID[i]=0;
+	}
+//	printf("nodecount=%o\n",nodecount);
+	std::map<unsigned int, unsigned int> labelcount;
+	for (DFSCode::iterator it = begin(); it != end(); ++it) {
+		if (nodeID[it->from] == 0) {
+			nodeID[it->from]++;
+			l_it=labelcount.find(it->fromlabel);
+			if (l_it==labelcount.end()) {
+				labelcount[it->fromlabel]=1;
+//				labelcount.insert(it->fromlabel, 1);
+//				labelcount.insert(std::pair<unsigned int,unsigned int>(it->fromlabel,1));
+			} else {
+				labelcount[it->fromlabel]++;
+			}
+		}
+		if (nodeID[it->to] == 0) {
+			nodeID[it->to]++;
+			l_it=labelcount.find(it->tolabel);
+			if (l_it==labelcount.end()) {
+				labelcount[it->tolabel]=1;
+//				labelcount.insert(it->tolabel, 1);
+//				labelcount.insert(std::pair<unsigned int,unsigned int>(it->tolabel,1));
+			} else {
+				labelcount[it->tolabel]++;
+			}
+		}
+	}
+//	printf("size of labelcount=%o\n",labelcount.size());
+	std::map<unsigned int,unsigned int>::iterator iter;
+	iter = labelcount.begin();
+//	printf("size of labelnum=%o",labelnum);
+	while(iter != labelcount.end()) {
+		labelnum=std::max(labelnum,(unsigned int)iter->second);
+		iter++;
+	}
+//	printf("size of labelnum2=%o",labelnum);
+	return (labelnum);
 }
 
 std::ostream &DFSCode::write(std::ostream &os) {

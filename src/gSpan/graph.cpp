@@ -56,8 +56,10 @@ void Graph::buildEdge() {
 				it != (*this)[from].edge.end(); ++it) {
 			if (directed || from <= it->to)
 				sprintf(buf, "%d %d %d", from, it->to, it->elabel);
+//				sprintf(buf, "%d %d %d", from, it->to, 1);
 			else
 				sprintf(buf, "%d %d %d", it->to, from, it->elabel);
+//				sprintf(buf, "%d %d %d", it->to, from, 1);
 
 			// Assign unique id's for the edges.
 			if (tmp.find(buf) == tmp.end()) {
@@ -145,8 +147,10 @@ std::ostream &Graph::write(std::ostream &os) {
 				it != (*this)[from].edge.end(); ++it) {
 			if (directed || from <= it->to) {
 				sprintf(buf, "%d %d %d", from, it->to, it->elabel);
+//				sprintf(buf, "%d %d %d", from, it->to, 1);
 			} else {
 				sprintf(buf, "%d %d %d", it->to, from, it->elabel);
+//				sprintf(buf, "%d %d %d", it->to, from, 1);
 			}
 			tmp.insert(buf);
 		}

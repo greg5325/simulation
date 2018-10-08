@@ -20,7 +20,6 @@
  02111-1307, USA
  */
 
-
 //#include "gspan.h"
 #include "../basic/Worker.h"
 #include <iterator>
@@ -29,18 +28,23 @@
 #include <unistd.h>
 
 namespace GSPAN {
-char * resultfile=NULL;
+char * resultfile = NULL;
 gSpan::gSpan(void) {
-
 #ifdef SIMULATION
 #ifdef little
 	labelset.push_back('a');
 	labelset.push_back('b');
 	labelset.push_back('c');
 	labelset.push_back('d');
+	labelset_global.push_back('a');
+	labelset_global.push_back('b');
+	labelset_global.push_back('c');
+	labelset_global.push_back('d');
 #else
-	for (char i = 1; i <= 100; i++)
+	for (char i = 1; i <= 100; i++) {
 		labelset.push_back(i);
+		labelset_global.push_back(i);
+	}
 #endif
 	labelsetsize = labelset.size();
 #endif
@@ -165,8 +169,6 @@ void gSpan::report_single(Graph &g, unsigned int sup) {
 }
 #endif
 
-
-
 void gSpan::report(Projected &projected, unsigned int sup) {
 
 	/* Filter too small/too large graphs.
@@ -175,6 +177,13 @@ void gSpan::report(Projected &projected, unsigned int sup) {
 		return;
 	if (maxpat_min > 0 && DFS_CODE.nodeCount() < maxpat_min)
 		return;
+
+//	printf("wrong A!!");
+	if (DFS_CODE.labelCount()>0 && DFS_CODE.labelCount() > fre_label)
+						return;
+
+
+
 #ifndef DIRECTED
 	if (where) {
 		*os << "<pattern>\n";
@@ -191,7 +200,7 @@ void gSpan::report(Projected &projected, unsigned int sup) {
 		if (!where)
 #endif
 		*os << "t # " << ID << " * " << sup;
-
+//		*os << "t # " << ID ; //for VF2 algorithm data format
 		*os << '\n';
 		g.write(*os);
 	} else {
@@ -226,10 +235,9 @@ void gSpan::report(Projected &projected, unsigned int sup) {
 	++ID;
 }
 
-
 void gSpan::store(Projected &projected, unsigned int sup) {
 
-	if(resultfile){
+	if (resultfile) {
 		/* Filter too small/too large graphs.
 		 */
 		if (maxpat_max > maxpat_min && DFS_CODE.nodeCount() > maxpat_max)
@@ -237,15 +245,21 @@ void gSpan::store(Projected &projected, unsigned int sup) {
 		if (maxpat_min > 0 && DFS_CODE.nodeCount() < maxpat_min)
 			return;
 
+//		printf("wrong B!!");
+		if (DFS_CODE.labelCount()>0 && DFS_CODE.labelCount() > fre_label)
+					return;
+
+
+
 		std::ofstream ofile;
-		ofile.open(resultfile,std::ios::app);
+
+		ofile.open(resultfile, std::ios::app);
 		Graph g(directed);
 		DFS_CODE.toGraph(g);
 		ofile << "t # " << ID << " * " << sup;
-
-		ofile<< '\n';
+//		ofile << "t # " << ID ; //for VF2 algorithm data format
+		ofile << '\n';
 		g.write(ofile);
-
 
 		ofile << "\n\n";
 
@@ -262,20 +276,45 @@ void gSpan::project(Projected &projected) {
 			supppasscount = 0;
 	assert(projected.size()==1);
 
+#ifdef SIMULATION
 	//filter if new added edge below frequent
 	DFS& dfstmp = DFS_CODE.back();
 	if (dfstmp.src == 'l') {
-		if (edgeFrequent[dfstmp.fromlabel][dfstmp.tolabel] < minsup){
+		if (edgeFrequent[dfstmp.fromlabel][dfstmp.tolabel] < minsup) {
 			return;
 		}
 	} else if (dfstmp.src == 'r') {
 //		if(dfstmp.from==30&&dfstmp.tolabel)
-		if (edgeFrequent[dfstmp.tolabel][dfstmp.fromlabel] < minsup){
+		if (edgeFrequent[dfstmp.tolabel][dfstmp.fromlabel] < minsup) {
 			return;
 		}
 	} else {
 		assert(false);
 	}
+	//filter if the pattern isn't frequent after new edge added
+//	ext_e_freq_stack.resize(edges.size());
+//	ext_v_freq_stack.resize(edges.size());
+	if (DFS_CODE.size() >= 2) {
+		map<int, map<int, int> > & ext_e_freq = ext_e_freq_stack[DFS_CODE.size()
+				- 2];
+		map<int, map<char, map<char, int> > > & ext_v_freq =
+				ext_v_freq_stack[DFS_CODE.size() - 2];
+
+		if (dfstmp.from < dfstmp.to) { //forward edge, new vertex
+			if (ext_v_freq[dfstmp.from][dfstmp.tolabel][dfstmp.src] < minsup)
+				return;
+		} else { //backward edge, no new vertex
+			if (dfstmp.src == 'l') {
+				if (ext_e_freq[dfstmp.from][dfstmp.to] < minsup)
+					return;
+			} else if (dfstmp.src == 'r') {
+				if (ext_e_freq[dfstmp.to][dfstmp.from] < minsup)
+					return;
+			}
+		}
+
+	}
+#endif
 
 	/* Check if the pattern is frequent enough.
 	 *
@@ -291,9 +330,18 @@ void gSpan::project(Projected &projected) {
 	 * number of nodes.
 	 */
 	exceedstestcount++;
+//	printf("nodeCount=%o,wrong C!!",DFS_CODE.nodeCount());
 	if (maxpat_max > maxpat_min && DFS_CODE.nodeCount() > maxpat_max) {
 		return;
 	}
+
+//	printf("%o,wrong C!!",fre_label);
+//	printf("labelCount=%o,wrong C!!",DFS_CODE.labelCount());
+	if (DFS_CODE.labelCount()>0  && DFS_CODE.labelCount() > fre_label)
+			return;
+
+
+
 	/* The minimal DFS code check is more expensive than the support check,
 	 * hence it is done now, after checking the support.
 	 *
@@ -305,9 +353,19 @@ void gSpan::project(Projected &projected) {
 		return;
 	}
 
-
 #ifdef SIMULATION
+	//maintain the RMVertexes vector
+	RMPath rmpath = DFS_CODE.buildRMPath();
+	RMVertexes.clear();
+	for (RMPath::reverse_iterator it = rmpath.rbegin(); it != rmpath.rend();
+			it++) {
+		RMVertexes.push_back(DFS_CODE[*it].from);
+	}
+	if (rmpath.size() > 0) {
+		RMVertexes.push_back(DFS_CODE[rmpath[0]].to);
+	}
 
+	//maintain gspanMsg
 	supptestcount++;
 	static int reported = 0;
 	reported++;
@@ -357,7 +415,6 @@ void gSpan::project(Projected &projected) {
 
 	int supp = curSupp();
 
-
 	if (supp < minsup) {
 		return;
 	}
@@ -369,12 +426,11 @@ void gSpan::project(Projected &projected) {
 	report(projected, sup);
 #endif
 
-
 	/* We just outputted a frequent subgraph.  As it is frequent enough, so
 	 * might be its (n+1)-extension-graphs, hence we enumerate them all.
 	 */
 
-	const RMPath rmpath = DFS_CODE.buildRMPath(); //build by backward traverse.
+	//const RMPath rmpath = DFS_CODE.buildRMPath(); //build by backward traverse.
 	int minlabel = DFS_CODE[0].fromlabel; //root vertex label, minlabel of dfscode
 	int maxtoc = DFS_CODE[rmpath[0]].to; //max vertexID of dfs code.
 
@@ -403,7 +459,6 @@ void gSpan::project(Projected &projected) {
 		if (!exist) {
 			if (DFS_CODE[rmpath[i]].tolabel > DFS_CODE[rmpath[0]].tolabel)
 				continue;
-
 
 			DFS_CODE.push(to, from, DFS_CODE[rmpath[0]].tolabel, 0,
 					DFS_CODE[rmpath[i]].fromlabel, 'l');
@@ -528,7 +583,6 @@ void gSpan::project(Projected &projected) {
 #else
 
 void gSpan::project(Projected &projected) {
-
 
 	/* Check if the pattern is frequent enough.
 	 */
@@ -772,7 +826,7 @@ void gSpan::project(Projected &projected) {
 #ifdef SIMULATION
 
 void gSpan::run(unsigned int _minsup, unsigned int _maxpat_min,
-		unsigned int _maxpat_max, bool _enc, bool _where, bool _directed) {
+		unsigned int _maxpat_max, unsigned int _fre_label,bool _enc, bool _where, bool _directed) {
 	/*
 	 *
 	 * parameters
@@ -788,13 +842,14 @@ void gSpan::run(unsigned int _minsup, unsigned int _maxpat_min,
 	minsup = _minsup;
 	maxpat_min = _maxpat_min;
 	maxpat_max = _maxpat_max;
+	fre_label=_fre_label;
 	enc = _enc;
 	where = _where;
 	directed = _directed;
 
 	TRACE(
-			"Call parameter:\n  (_minsup=%u,_maxpat_min=%u,_maxpat_max=%u,_enc=%d,_where=%d,_directed=%d)\n",
-			minsup, maxpat_min, maxpat_max, enc, where, directed);
+			"Call parameter:\n  (_minsup=%u,_maxpat_min=%u,_maxpat_max=%u,_fre_label=%u,_enc=%d,_where=%d,_directed=%d)\n",
+			minsup, maxpat_min, maxpat_max,fre_label, enc, where, directed);
 
 	run_intern();
 }
@@ -1004,43 +1059,39 @@ void gSpan::run_intern(void) {
 
 }
 
-
-
-
-
 /*
  *
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,a> occurs 0 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,a> occurs 0 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,b> occurs 2 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,b> occurs 2 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,c> occurs 2 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,c> occurs 2 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,d> occurs 0 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<a,d> occurs 0 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,a> occurs 0 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,a> occurs 0 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,b> occurs 0 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,b> occurs 0 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,c> occurs 2 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,c> occurs 2 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,d> occurs 0 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<b,d> occurs 0 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,a> occurs 0 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,a> occurs 0 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,b> occurs 0 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,b> occurs 0 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,c> occurs 1 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,c> occurs 1 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,d> occurs 2 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<c,d> occurs 2 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,a> occurs 1 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,a> occurs 1 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,b> occurs 2 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,b> occurs 2 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,c> occurs 2 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,c> occurs 2 times
 
-../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,d> occurs 0 times
+ ../src/basic/../gSpan/../basic/Worker.h(391) rank#0:<d,d> occurs 0 times
 
 
 

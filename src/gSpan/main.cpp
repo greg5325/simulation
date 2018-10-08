@@ -53,11 +53,11 @@ void usage(void) {
 //	}
 //	exit(0);
 
-	unsigned int minsup = 1;
+	unsigned int minsup = 30000;
 
 	//maxpat_min(max): lower(upper) bound on node count.
 	unsigned int maxpat = 1; //maxpat_min
-	unsigned int minnodes = 4; //maxpat_max
+	unsigned int minnodes = 3; //maxpat_max
 	bool where = true;
 	bool enc = false;
 #ifdef DIRECTED
@@ -100,7 +100,8 @@ void usage(void) {
 	GSPAN::gSpan gspan;
 
 #ifdef SIMULATION
-	gspan.run(1, 1, 3, false, false, true);
+//	gspan.run(1, 1, 2, 3, false, false, true);
+	gspan.run(30000, 1, 3, 2, false, false, true);
 #else
 	gspan.run(std::cin, std::cout, minsup, maxpat, minnodes, enc, where,
 			directed);
