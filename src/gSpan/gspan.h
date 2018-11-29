@@ -48,8 +48,14 @@
 /*
  *the macro little defines if the code is run on the cluster or on the development environment
  */
-#define little 1
+//#define little 1
 
+#define debug
+#ifdef debug
+//#define debug1 //20180131
+
+
+#endif
 
 
 
@@ -200,6 +206,10 @@ public:
 	/* Return number of nodes in the graph.
 	 */
 	unsigned int nodeCount(void);
+	/*
+	 * Return numbers of each label's nodes.
+	 */
+	unsigned int labelCount(void);
 #ifdef DIRECTED
 	void push(int from, int to, int fromlabel, int elabel, int tolabel,
 			char direction) {
@@ -380,6 +390,7 @@ private:
 	unsigned int minsup;
 	unsigned int maxpat_min; // lower bound on node count
 	unsigned int maxpat_max; // upper bound on node count
+	unsigned int fre_label;
 	bool where;
 	bool enc;
 	bool directed;
@@ -420,7 +431,7 @@ public:
 	gSpan(void);
 #ifdef SIMULATION
 	void run(unsigned int _minsup, unsigned int _maxpat_min,
-			unsigned int _maxpat_max, bool _enc, bool _where, bool _directed);
+			unsigned int _maxpat_max, unsigned int _fre_label,bool _enc, bool _where, bool _directed);
 #else
 	void run(std::istream &is, std::ostream &_os, unsigned int _minsup,
 			unsigned int _maxpat_min, unsigned int _maxpat_max, bool _enc,
